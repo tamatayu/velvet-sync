@@ -103,8 +103,10 @@ export class ChatService implements IChatService {
     };
     session.messages.push(assistantMsg);
 
-    // === Mode Manager Integration (simple keyword trigger for now) ===
+    // === Mode Manager Integration ===
     const lowerContent = content.toLowerCase();
+
+    // Simple keyword trigger
     if (lowerContent.includes('edging') || lowerContent.includes('edge')) {
       this.modeManager.proposeMode('edging');
     } else if (lowerContent.includes('stop and go') || lowerContent.includes('stopgo')) {
@@ -113,10 +115,15 @@ export class ChatService implements IChatService {
       this.modeManager.proposeMode('challenge');
     }
 
+    // Confirmation detection
+    const isConfirmation = ['ja', 'bereit', 'tu es', 'yes', 'go', 'bitte'].some(word => lowerContent.includes(word));
+    if (isConfirmation && this.modeManager.getCurrentStatus().state === 'AWAITING_CONFIRMATION') {
+      this.modeManager.startMode();
+    }
+
     // Listen to mode status changes
     this.modeManager.onStatusChange = (status) => {
       console.log('[ModeManager] Status changed:', status);
-      // Later: send message to user / start pattern generator
     };
 
     // Auto-summarize every 8 messages (Memory Phase 2)
