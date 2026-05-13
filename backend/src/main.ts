@@ -1,28 +1,18 @@
-import 'reflect-metadata'
-import express from 'express'
-import cors from 'cors'
-import { Server } from 'socket.io'
-import { container } from 'tsyringe'
-import { config } from 'dotenv'
-import pino from 'pino'
+import 'reflect-metadata';
+import { container } from 'tsyringe';
+import './infrastructure/server';
 
-config()
+// Register services (will be expanded)
+container.register('ILLMAdapter', { useClass: (await import('./adapters/OllamaAdapter')).OllamaAdapter });
+container.register('IChatService', { useClass: (await import('./services/ChatService')).ChatService });
 
-const logger = pino()
-const app = express()
-const PORT = process.env.PORT || 3000
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
 
-app.use(cors())
-app.use(express.json())
-
-// Socket.io
-const httpServer = app.listen(PORT, () => {
-    logger.info(`Backend läuft auf http://localhost:${PORT}`)
-})
-
-const io = new Server(httpServer, {
-    cors: { origin: "*" }
-})
-
-// Container Setup später hier
-// container.register...
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  process.exit(0);
+});
