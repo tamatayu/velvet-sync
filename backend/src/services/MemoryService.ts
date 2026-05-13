@@ -19,6 +19,7 @@ export class MemoryService {
   private readonly summaryModel: string;
   private readonly summariesFile: string;
   private summaries: Map<string, SessionSummary> = new Map();
+  private currentProfileId: string | null = null;
 
   constructor(@inject(delay(() => ChatService)) private chatService: ChatService) {
     this.ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
@@ -27,10 +28,20 @@ export class MemoryService {
     this.loadSummaries();
   }
 
+  setCurrentProfile(profileId: string | null) {
+    this.currentProfileId = profileId;
+    this.loadSummaries(); // Reload memories for new profile
+  }
+
   private loadSummaries() {
+    const file = this.currentProfileId 
+      ? path.resolve(`data/memories/${this.currentProfileId}.json`)
+      : this.summariesFile;
+
     try {
-      if (fs.existsSync(this.summariesFile)) {
-        const data = JSON.parse(fs.readFileSync(this.summariesFile, 'utf8'));
+      if (fs.existsSync(file)) {
+        const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+        this.summaries.clear();
         data.forEach((s: any) => {
           this.summaries.set(s.sessionId, {
             ...s,
@@ -38,19 +49,25 @@ export class MemoryService {
             lastUpdated: new Date(s.lastUpdated)
           });
         });
+      } else {
+        this.summaries.clear();
       }
     } catch (e) {
-      console.warn('[MemoryService] Could not load summaries');
+      console.warn('[MemoryService] Could not load summaries for profile', this.currentProfileId);
     }
   }
 
   private saveSummaries() {
+    const file = this.currentProfileId 
+      ? path.resolve(`data/memories/${this.currentProfileId}.json`)
+      : this.summariesFile;
+
     try {
-      const dir = path.dirname(this.summariesFile);
+      const dir = path.dirname(file);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(this.summariesFile, JSON.stringify(Array.from(this.summaries.values()), null, 2));
+      fs.writeFileSync(file, JSON.stringify(Array.from(this.summaries.values()), null, 2));
     } catch (e) {
-      console.error('[MemoryService] Failed to save summaries');
+      console.error('[MemoryService] Failed to save summaries for profile', this.currentProfileId);
     }
   }
 
@@ -58,7 +75,7 @@ export class MemoryService {
    * Creates a summary of the current session using a small fast model
    */
   async summarizeSession(sessionId: string): Promise<SessionSummary | null> {
-    const messages = await this.chatService.getHistory(sessionId);
+    const messages = this.chatService.getHistory(sessionId);
     if (messages.length < 4) return null; // Too short to summarize
 
     const conversationText = messages
