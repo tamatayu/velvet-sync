@@ -4,6 +4,8 @@ import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pino from 'pino';
+import { container } from 'tsyringe';
+import { ChatService } from '../services/ChatService';
 
 dotenv.config();
 
@@ -72,17 +74,11 @@ io.on('connection', (socket) => {
     try {
       logger.info({ socketId: socket.id, sessionId: data.sessionId }, 'Chat message received');
       
-      // TODO: Integrate with ChatService + LLMService
-      // For now, echo back
-      const response = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: `Echo: ${data.content} (LLM integration coming soon)`,
-        timestamp: new Date()
-      };
+      const chatService = container.resolve(ChatService);
+      const result = await chatService.sendUserMessage(data.sessionId, data.content);
 
       // Broadcast to session room
-      io.to(`session:${data.sessionId}`).emit('chat-response', response);
+      io.to(`session:${data.sessionId}`).emit('chat-response', result.message);
     } catch (error) {
       logger.error({ error, socketId: socket.id }, 'Chat message error');
       socket.emit('error', { message: 'Failed to process message' });
