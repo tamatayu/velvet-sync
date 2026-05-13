@@ -52,16 +52,13 @@ export class ChatService implements IChatService {
     // Generate AI response with memory context
     const persona = this.personaService.getPersonaById(session.personaId) || this.personaService.getDefaultPersona();
     const memoryContext = this.memoryService.getRelevantMemories(sessionId);
-    
-    const enhancedContext = memoryContext 
-      ? `${memoryContext}\n\nAktueller Gesprächsv erlauf:\n${contextForLLM.map(m => `${m.role}: ${m.content}`).join('\n')}`
-      : contextForLLM.map(m => `${m.role}: ${m.content}`).join('\n');
 
     const aiResponseText = await this.llmService.generateResponse(
       sessionId,
       content,
       persona,
-      enhancedContext
+      contextForLLM,
+      memoryContext
     );
 
     // Add assistant message

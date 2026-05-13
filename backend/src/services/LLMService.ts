@@ -1,5 +1,4 @@
 import { injectable, inject } from 'tsyringe';
-import { ILLMAdapter, LLMOptions } from '../core/interfaces/ILLMAdapter';
 import axios from 'axios';
 
 @injectable()
@@ -13,26 +12,28 @@ export class LLMService {
   }
 
   async generateResponse(
-      sessionId: string,
-      userMessage: string,
-      persona: any,
-      conversationHistory: Array<{ role: string; content: string }> | string = []
+    sessionId: string,
+    userMessage: string,
+    persona: any,
+    conversationHistory: Array<{ role: string; content: string }> = [],
+    memoryContext: string = ''
   ): Promise<string> {
     const systemPrompt = this.buildSystemPrompt(persona);
-
+    
+    const contextMessages = conversationHistory.slice(-12);
+    
     let messages: any[] = [];
-
-    if (typeof conversationHistory === 'string') {
-      // Memory Context als System-Message
+    
+    if (memoryContext) {
       messages = [
-        { role: 'system', content: systemPrompt + '\n\n' + conversationHistory },
+        { role: 'system', content: systemPrompt + '\n\n' + memoryContext },
+        ...contextMessages,
         { role: 'user', content: userMessage }
       ];
     } else {
-      // Normaler Verlauf
       messages = [
         { role: 'system', content: systemPrompt },
-        ...conversationHistory,
+        ...contextMessages,
         { role: 'user', content: userMessage }
       ];
     }
