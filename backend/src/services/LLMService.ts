@@ -64,6 +64,48 @@ export class LLMService {
     }
   }
 
+  /**
+   * Consolidate and update user memory profile based on recent chat
+   * (ported from original high-quality implementation)
+   */
+  public async consolidateMemoryProfile(
+    chatChunk: Array<{ role: string; content: string }> = [],
+    currentProfile: any
+  ): Promise<any> {
+    const chatLog = (chatChunk ?? [])
+      .map(x => `role: ${x.role}, content: ${x.content}`)
+      .join('\n');
+
+    const prompt = [
+      `You are a cold, precise, data-extraction machine. Your only function is to analyze a conversation log and update a JSON profile about the HUMAN participant.`,
+      `**RULES:**`,
+      `- The 'user' role is the HUMAN. Extract ONLY facts about the HUMAN.`,
+      `- PRESERVE existing data (name, likes, etc.). Only ADD new information.`,
+      `- CORRECT contradictions if the new log clearly contradicts existing data.`,
+      `- Write keyMemories from the user's first-person perspective.`,
+      ``,
+      `**EXISTING PROFILE:**`,
+      JSON.stringify(currentProfile || {}, null, 2),
+      ``,
+      `**NEW CONVERSATION LOG:**`,
+      chatLog,
+      ``,
+      `Return ONLY the updated JSON profile. No explanations.`,
+    ].join('\n');
+
+    try {
+      const result = await this.talkToLLM<any>([{ role: 'system', content: prompt }], 0.0);
+      return {
+        name: result?.name ?? currentProfile?.name ?? '',
+        likes: result?.likes ?? currentProfile?.likes ?? [],
+        dislikes: result?.dislikes ?? currentProfile?.dislikes ?? [],
+        keyMemories: result?.keyMemories ?? currentProfile?.keyMemories ?? [],
+      };
+    } catch {
+      return currentProfile || { name: '', likes: [], dislikes: [], keyMemories: [] };
+    }
+  }
+
   private buildSystemPrompt(persona: any): string {
     const p = persona.fullPromptData || persona;
 
