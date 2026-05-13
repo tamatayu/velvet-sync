@@ -4,12 +4,14 @@ import { useChatStore } from '@/stores/chat'
 import { useSessionStore } from '@/stores/session'
 import PersonaSelector from '@/components/PersonaSelector.vue'
 import SessionControls from '@/components/SessionControls.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 
 const chatStore = useChatStore()
 const sessionStore = useSessionStore()
 
 const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
+const showSettings = ref(false)
 
 const sendMessage = async () => {
   if (!messageInput.value.trim()) return
@@ -32,7 +34,17 @@ const joinSession = () => {
 
 onMounted(() => {
   joinSession()
+  
+  // Show settings dialog on every start
+  const hasSettings = localStorage.getItem('velvet-settings')
+  if (!hasSettings) {
+    showSettings.value = true
+  }
 })
+
+const closeSettings = () => {
+  showSettings.value = false
+}
 </script>
 
 <template>
@@ -73,6 +85,8 @@ onMounted(() => {
         </button>
       </div>
     </div>
+
+    <SettingsDialog v-if="showSettings" @close="closeSettings" />
   </div>
 </template>
 
