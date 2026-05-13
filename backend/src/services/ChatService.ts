@@ -11,6 +11,7 @@ interface SessionData {
   personaId: string;
   structuredMemory?: any;
   userSettings?: any;
+  pendingModeStart?: string;
 }
 
 @injectable()
@@ -95,10 +96,20 @@ export class ChatService implements IChatService {
     );
 
     // Add assistant message
+    let finalResponse = aiResponseText;
+
+    // If a mode just started, inform the AI
+    if (session.pendingModeStart) {
+      const modeName = session.pendingModeStart === 'stopgo' ? 'Stop & Go' : 
+                       session.pendingModeStart === 'edging' ? 'Edging' : 'Challenge';
+      finalResponse = `Der ${modeName} Modus ist jetzt aktiv. Ich übernehme die Kontrolle... 💕\n\n${aiResponseText}`;
+      delete session.pendingModeStart;
+    }
+
     const assistantMsg: ChatMessage = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
-      content: aiResponseText,
+      content: finalResponse,
       timestamp: new Date()
     };
     session.messages.push(assistantMsg);
@@ -124,6 +135,12 @@ export class ChatService implements IChatService {
     // Listen to mode status changes
     this.modeManager.onStatusChange = (status) => {
       console.log('[ModeManager] Status changed:', status);
+
+      // When mode becomes ACTIVE, we can inform the AI in the next response
+      if (status.state === 'ACTIVE' && status.activeMode) {
+        // Store that we need to inform the AI
+        session.pendingModeStart = status.activeMode;
+      }
     };
 
     // Auto-summarize every 8 messages (Memory Phase 2)
