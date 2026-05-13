@@ -9,6 +9,7 @@ interface SessionData {
   lastActivity: Date;
   personaId: string;
   structuredMemory?: any;
+  userSettings?: any;
 }
 
 @injectable()
@@ -78,12 +79,17 @@ export class ChatService implements IChatService {
     // Generate AI response
     const persona = this.personaService.getPersonaById(session.personaId) || this.personaService.getDefaultPersona();
 
+    // Load user settings
+    const userSettings = session.userSettings || JSON.parse(localStorage.getItem('velvet-settings') || '{}');
+
     const aiResponseText = await this.llmService.generateResponse(
       sessionId,
       content,
       persona,
       lastMessages,
-      memoryBlock
+      memoryBlock,
+      userSettings.gender,
+      userSettings.name
     );
 
     // Add assistant message
