@@ -1,0 +1,21 @@
+{
+  "name": "velvet-sync-frontend",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.31",
+    "pinia": "^2.1.7",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "vite": "^5.3.4",
+    "typescript": "^5.5.3",
+    "@types/node": "^20.14.10"
+  }
+}
