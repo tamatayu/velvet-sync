@@ -43,6 +43,16 @@ export class ChatService implements IChatService {
     session.messages.push(userMsg);
     session.lastActivity = new Date();
 
+    // Add user message
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content,
+      timestamp: new Date()
+    };
+    session.messages.push(userMsg);
+    session.lastActivity = new Date();
+
     // Prepare context for LLM (last 12 messages)
     const contextForLLM = session.messages.slice(-12).map(m => ({
       role: m.role === 'user' ? 'user' : 'assistant',
@@ -73,7 +83,7 @@ export class ChatService implements IChatService {
     return { message: assistantMsg };
   }
 
-  getHistory(sessionId: string): ChatMessage[] {
+  async getHistory(sessionId: string): Promise<ChatMessage[]> {
     return this.sessions.get(sessionId)?.messages || [];
   }
 
