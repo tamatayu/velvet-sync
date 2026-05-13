@@ -22,16 +22,6 @@ const sendMessage = async () => {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
 }
-
-const joinSession = () => {
-  const sessionId = sessionStore.sessionId || 'demo-session'
-  sessionStore.setSessionId(sessionId)
-  chatStore.connect(sessionId)
-}
-
-onMounted(() => {
-  joinSession()
-})
 </script>
 
 <template>
