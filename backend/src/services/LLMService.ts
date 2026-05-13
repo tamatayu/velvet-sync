@@ -8,7 +8,7 @@ export class LLMService {
 
   constructor() {
     this.ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
-    this.defaultModel = process.env.OLLAMA_MODEL || 'llama3.1:8b-instruct-q4_K_M';
+    this.defaultModel = process.env.OLLAMA_MODEL || 'dolphin-llama3:8b';
   }
 
   async generateResponse(

@@ -70,6 +70,11 @@ export class ChatService implements IChatService {
     };
     session.messages.push(assistantMsg);
 
+    // Auto-summarize every 8 messages (Memory Phase 2)
+    if (session.messages.length % 8 === 0) {
+      this.memoryService.summarizeSession(sessionId);
+    }
+
     return { message: assistantMsg };
   }
 
