@@ -8,6 +8,7 @@ interface SessionData {
   messages: ChatMessage[];
   lastActivity: Date;
   personaId: string;
+  structuredMemory?: any;
 }
 
 @injectable()
@@ -43,22 +44,46 @@ export class ChatService implements IChatService {
     session.messages.push(userMsg);
     session.lastActivity = new Date();
 
-    // Prepare context for LLM (last 12 messages)
-    const contextForLLM = session.messages.slice(-12).map(m => ({
+    // === BESTE AKTUELLE LÖSUNG (Short + Structured + Long-term Memory) ===
+
+    // 1. Short-term: Last 10 messages (full detail)
+    const lastMessages = session.messages.slice(-10).map(m => ({
       role: m.role === 'user' ? 'user' : 'assistant',
       content: m.content
     }));
 
-    // Generate AI response with memory context
+    // 2. Structured Memory (Likes / Dislikes / KeyMemories)
+    const recentForProfile = session.messages.slice(-15);
+    const structuredMemory = await this.llmService.consolidateMemoryProfile(
+      recentForProfile,
+      session.structuredMemory || {}
+    );
+    session.structuredMemory = structuredMemory; // cache it
+
+    // 3. Long-term: Compressed older sessions (max 2)
+    const oldSessionSummaries = this.memoryService.getRelevantMemories(sessionId, 2);
+
+    // Build final memory context for the prompt
+    let memoryBlock = '';
+    if (structuredMemory && (structuredMemory.likes?.length || structuredMemory.keyMemories?.length)) {
+      memoryBlock += `### ABOUT THE USER (structured memory):\n`;
+      if (structuredMemory.likes?.length) memoryBlock += `Likes: ${structuredMemory.likes.join(', ')}\n`;
+      if (structuredMemory.dislikes?.length) memoryBlock += `Dislikes: ${structuredMemory.dislikes.join(', ')}\n`;
+      if (structuredMemory.keyMemories?.length) memoryBlock += `Key memories: ${structuredMemory.keyMemories.join(' | ')}\n`;
+    }
+    if (oldSessionSummaries) {
+      memoryBlock += `\n### OLDER SESSIONS (compressed):\n${oldSessionSummaries}`;
+    }
+
+    // Generate AI response
     const persona = this.personaService.getPersonaById(session.personaId) || this.personaService.getDefaultPersona();
-    const memoryContext = this.memoryService.getRelevantMemories(sessionId);
 
     const aiResponseText = await this.llmService.generateResponse(
       sessionId,
       content,
       persona,
-      contextForLLM,
-      memoryContext
+      lastMessages,
+      memoryBlock
     );
 
     // Add assistant message
