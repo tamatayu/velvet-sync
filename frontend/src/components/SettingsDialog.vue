@@ -43,24 +43,38 @@ onMounted(() => {
 })
 
 const saveAndClose = async () => {
-  const settings = {
-    name: name.value,
-    gender: gender.value,
-    description: description.value,
-    activePersona: activePersona.value,
-    savedAt: new Date().toISOString()
+  if (!name.value.trim()) {
+    alert('Bitte gib einen Namen ein')
+    return
   }
-  
+
   try {
-    // Send to backend
-    await axios.post('/api/user/settings', settings)
+    // Create real Profile via backend
+    const profileData = {
+      name: name.value,
+      gender: gender.value,
+      personaId: activePersona.value
+    }
+    
+    const profileRes = await axios.post('/api/profiles', profileData)
+    const newProfile = profileRes.data
+
+    // Also save local settings for backward compatibility
+    const settings = {
+      name: name.value,
+      gender: gender.value,
+      description: description.value,
+      activePersona: activePersona.value,
+      profileId: newProfile.id,
+      savedAt: new Date().toISOString()
+    }
     
     localStorage.setItem('velvet-settings', JSON.stringify(settings))
     sessionStore.setUserSettings(settings)
     
     emit('close')
   } catch (e) {
-    alert('Fehler beim Speichern der Einstellungen')
+    alert('Fehler beim Erstellen des Profils')
   }
 }
 </script>
