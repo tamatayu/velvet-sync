@@ -7,6 +7,7 @@ container.register('ILLMAdapter', { useClass: (await import('./adapters/OllamaAd
 container.register('IChatService', { useClass: (await import('./services/ChatService')).ChatService });
 container.register('PersonaService', { useClass: (await import('./services/PersonaService')).PersonaService });
 container.register('MemoryService', { useClass: (await import('./services/MemoryService')).MemoryService });
+container.register('ProfileService', { useClass: (await import('./services/ProfileService')).ProfileService });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

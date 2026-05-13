@@ -7,6 +7,8 @@ import pino from 'pino';
 import { container } from 'tsyringe';
 import { ChatService } from '../services/ChatService';
 import personaRoutes from '../routes/persona.routes';
+import userRoutes from '../routes/user.routes';
+import profileRoutes from '../routes/profile.routes';
 
 dotenv.config();
 
@@ -49,6 +51,8 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/personas', personaRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/profiles', profileRoutes);
 
 app.get('/api/status', (req, res) => {
   res.json({
