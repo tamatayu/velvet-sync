@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/session'
+import axios from 'axios'
 
 const emit = defineEmits(['close'])
 
@@ -41,7 +42,7 @@ onMounted(() => {
   }
 })
 
-const saveAndClose = () => {
+const saveAndClose = async () => {
   const settings = {
     name: name.value,
     gender: gender.value,
@@ -50,12 +51,17 @@ const saveAndClose = () => {
     savedAt: new Date().toISOString()
   }
   
-  localStorage.setItem('velvet-settings', JSON.stringify(settings))
-  
-  // Update session store
-  sessionStore.setUserSettings(settings)
-  
-  emit('close')
+  try {
+    // Send to backend
+    await axios.post('/api/user/settings', settings)
+    
+    localStorage.setItem('velvet-settings', JSON.stringify(settings))
+    sessionStore.setUserSettings(settings)
+    
+    emit('close')
+  } catch (e) {
+    alert('Fehler beim Speichern der Einstellungen')
+  }
 }
 </script>
 
