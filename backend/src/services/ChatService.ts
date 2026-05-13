@@ -103,6 +103,22 @@ export class ChatService implements IChatService {
     };
     session.messages.push(assistantMsg);
 
+    // === Mode Manager Integration (simple keyword trigger for now) ===
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes('edging') || lowerContent.includes('edge')) {
+      this.modeManager.proposeMode('edging');
+    } else if (lowerContent.includes('stop and go') || lowerContent.includes('stopgo')) {
+      this.modeManager.proposeMode('stopgo');
+    } else if (lowerContent.includes('challenge') || lowerContent.includes('stamina')) {
+      this.modeManager.proposeMode('challenge');
+    }
+
+    // Listen to mode status changes
+    this.modeManager.onStatusChange = (status) => {
+      console.log('[ModeManager] Status changed:', status);
+      // Later: send message to user / start pattern generator
+    };
+
     // Auto-summarize every 8 messages (Memory Phase 2)
     if (session.messages.length % 8 === 0) {
       this.memoryService.summarizeSession(sessionId);
