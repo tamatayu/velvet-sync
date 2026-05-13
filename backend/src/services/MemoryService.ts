@@ -1,4 +1,4 @@
-import { injectable, inject } from 'tsyringe';
+import { injectable, inject, delay } from 'tsyringe';
 import axios from 'axios';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,7 +20,7 @@ export class MemoryService {
   private readonly summariesFile: string;
   private summaries: Map<string, SessionSummary> = new Map();
 
-  constructor(@inject(ChatService) private chatService: ChatService) {
+  constructor(@inject(delay(() => ChatService)) private chatService: ChatService) {
     this.ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
     this.summaryModel = 'llama3.2:3b'; // Small fast model for summarization
     this.summariesFile = path.resolve('data/session-summaries.json');
