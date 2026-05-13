@@ -1,4 +1,8 @@
 import { injectable } from 'tsyringe';
+import { IModeModule } from '../modes/IModeModule';
+import { StopAndGoModule } from '../modes/StopAndGoModule';
+import { EdgingModule } from '../modes/EdgingModule';
+import { ChallengeModule } from '../modes/ChallengeModule';
 
 export type ModeState = 
   | 'IDLE'
@@ -8,13 +12,7 @@ export type ModeState =
   | 'FINISHED'
   | 'EMERGENCY_STOP';
 
-export type ModeType = 
-  | 'edging'
-  | 'stopgo'
-  | 'faphero'
-  | 'endurance'
-  | 'intercourse'
-  | 'custom';
+export type ModeType = 'edging' | 'stopgo' | 'challenge';
 
 export interface ModeStatus {
   state: ModeState;
@@ -29,6 +27,7 @@ export class ModeManager {
   private activeMode: ModeType | null = null;
   private startedAt: Date | null = null;
   private currentPhase: string | null = null;
+  private currentModule: IModeModule | null = null;
 
   public onStatusChange?: (status: ModeStatus) => void;
 
@@ -57,12 +56,25 @@ export class ModeManager {
   }
 
   startMode() {
-    if (this.state !== 'AWAITING_CONFIRMATION') return;
+    if (this.state !== 'AWAITING_CONFIRMATION' || !this.activeMode) return;
+
+    // Load the correct module
+    this.currentModule = this.loadModule(this.activeMode);
+    this.currentModule?.onStart();
 
     this.state = 'ACTIVE';
     this.startedAt = new Date();
-    this.currentPhase = 'initial';
+    this.currentPhase = this.currentModule?.getCurrentPhase() || 'initial';
     this.notifyStatusChange();
+  }
+
+  private loadModule(type: ModeType): IModeModule {
+    switch (type) {
+      case 'stopgo': return new StopAndGoModule();
+      case 'edging': return new EdgingModule();
+      case 'challenge': return new ChallengeModule();
+      default: return new StopAndGoModule();
+    }
   }
 
   updatePhase(phase: string) {
