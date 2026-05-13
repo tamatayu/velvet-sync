@@ -3,6 +3,7 @@ import { LLMService } from './LLMService';
 import { PersonaService } from './PersonaService';
 import { MemoryService } from './MemoryService';
 import { ModeManager } from './ModeManager';
+import { IntentClassifier } from './IntentClassifier';
 import { IChatService, ChatMessage, ChatResponse } from '../core/interfaces/IChatService';
 
 interface SessionData {
@@ -22,7 +23,8 @@ export class ChatService implements IChatService {
     @inject(LLMService) private llmService: LLMService,
     @inject(PersonaService) private personaService: PersonaService,
     @inject(MemoryService) private memoryService: MemoryService,
-    @inject(ModeManager) private modeManager: ModeManager
+    @inject(ModeManager) private modeManager: ModeManager,
+    @inject(IntentClassifier) private intentClassifier: IntentClassifier
   ) {}
 
   async sendUserMessage(sessionId: string, content: string): Promise<ChatResponse> {
@@ -114,22 +116,26 @@ export class ChatService implements IChatService {
     };
     session.messages.push(assistantMsg);
 
-    // === Mode Manager Integration ===
-    const lowerContent = content.toLowerCase();
+    // === Mode Manager Integration (using Intent Classifier) ===
+    const intentResult = await this.intentClassifier.classify(content);
 
-    // Simple keyword trigger
-    if (lowerContent.includes('edging') || lowerContent.includes('edge')) {
-      this.modeManager.proposeMode('edging');
-    } else if (lowerContent.includes('stop and go') || lowerContent.includes('stopgo')) {
-      this.modeManager.proposeMode('stopgo');
-    } else if (lowerContent.includes('challenge') || lowerContent.includes('stamina')) {
-      this.modeManager.proposeMode('challenge');
-    }
-
-    // Confirmation detection
-    const isConfirmation = ['ja', 'bereit', 'tu es', 'yes', 'go', 'bitte'].some(word => lowerContent.includes(word));
-    if (isConfirmation && this.modeManager.getCurrentStatus().state === 'AWAITING_CONFIRMATION') {
-      this.modeManager.startMode();
+    if (intentResult.confidence > 0.65) {
+      switch (intentResult.intent) {
+        case 'request_mode_edging':
+          this.modeManager.proposeMode('edging');
+          break;
+        case 'request_mode_stopgo':
+          this.modeManager.proposeMode('stopgo');
+          break;
+        case 'request_mode_challenge':
+          this.modeManager.proposeMode('challenge');
+          break;
+        case 'confirm_ready':
+          if (this.modeManager.getCurrentStatus().state === 'AWAITING_CONFIRMATION') {
+            this.modeManager.startMode();
+          }
+          break;
+      }
     }
 
     // Listen to mode status changes
