@@ -5,6 +5,7 @@ import { useSessionStore } from '@/stores/session'
 import PersonaSelector from '@/components/PersonaSelector.vue'
 import SessionControls from '@/components/SessionControls.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import ProfileDialog from '@/components/ProfileDialog.vue'
 
 const chatStore = useChatStore()
 const sessionStore = useSessionStore()
@@ -12,6 +13,7 @@ const sessionStore = useSessionStore()
 const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 const showSettings = ref(false)
+const showProfile = ref(false)
 
 const sendMessage = async () => {
   if (!messageInput.value.trim()) return
@@ -87,6 +89,7 @@ const closeSettings = () => {
     </div>
 
     <SettingsDialog v-if="showSettings" @close="closeSettings" />
+    <ProfileDialog v-if="showProfile" @close="showProfile = false" />
   </div>
 </template>
 
