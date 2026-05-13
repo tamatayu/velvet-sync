@@ -2,9 +2,11 @@ import 'reflect-metadata';
 import { container } from 'tsyringe';
 import './infrastructure/server';
 
-// Register services (will be expanded)
+// Register services
 container.register('ILLMAdapter', { useClass: (await import('./adapters/OllamaAdapter')).OllamaAdapter });
 container.register('IChatService', { useClass: (await import('./services/ChatService')).ChatService });
+container.register('PersonaService', { useClass: (await import('./services/PersonaService')).PersonaService });
+container.register('MemoryService', { useClass: (await import('./services/MemoryService')).MemoryService });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
