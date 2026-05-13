@@ -2,6 +2,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useSessionStore } from '@/stores/session'
+import PersonaSelector from '@/components/PersonaSelector.vue'
 
 const chatStore = useChatStore()
 const sessionStore = useSessionStore()
@@ -37,6 +38,7 @@ onMounted(() => {
   <div class="app">
     <header class="header">
       <h1>VelvetSync</h1>
+      <PersonaSelector />
       <div class="status">
         <span :class="{ connected: chatStore.isConnected }">
           {{ chatStore.isConnected ? '● Verbunden' : '○ Getrennt' }}
