@@ -1,0 +1,39 @@
+{
+  "name": "velvet-sync",
+  "version": "1.0.0",
+  "description": "AI Sexting + TheHandy Control",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && tsx watch src/main.ts",
+    "dev:frontend": "cd frontend && vite",
+    "build:frontend": "cd frontend && vite build",
+    "build:backend": "cd backend && tsc",
+    "build": "npm run build:frontend && npm run build:backend",
+    "start": "node backend/dist/main.js",
+    "db:generate": "cd backend && drizzle-kit generate",
+    "db:migrate": "cd backend && drizzle-kit migrate",
+    "lint": "eslint . --ext .ts,.vue"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8",
+    "pino": "^9.0.0",
+    "tsyringe": "^4.8.0",
+    "eventemitter3": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.0.0",
+    "typescript": "^5.5.0",
+    "drizzle-kit": "^0.22.0",
+    "drizzle-orm": "^0.31.0"
+  }
+}
