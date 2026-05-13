@@ -13,21 +13,29 @@ export class LLMService {
   }
 
   async generateResponse(
-    sessionId: string,
-    userMessage: string,
-    persona: any,
-    conversationHistory: Array<{ role: string; content: string }> = []
+      sessionId: string,
+      userMessage: string,
+      persona: any,
+      conversationHistory: Array<{ role: string; content: string }> | string = []
   ): Promise<string> {
     const systemPrompt = this.buildSystemPrompt(persona);
-    
-    // Build conversation context (last 12 messages = ~6 turns)
-    const contextMessages = conversationHistory.slice(-12);
-    
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...contextMessages,
-      { role: 'user', content: userMessage }
-    ];
+
+    let messages: any[] = [];
+
+    if (typeof conversationHistory === 'string') {
+      // Memory Context als System-Message
+      messages = [
+        { role: 'system', content: systemPrompt + '\n\n' + conversationHistory },
+        { role: 'user', content: userMessage }
+      ];
+    } else {
+      // Normaler Verlauf
+      messages = [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory,
+        { role: 'user', content: userMessage }
+      ];
+    }
 
     const payload = {
       model: this.defaultModel,

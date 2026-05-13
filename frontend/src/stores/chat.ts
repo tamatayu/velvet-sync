@@ -19,22 +19,30 @@ export const useChatStore = defineStore('chat', {
   actions: {
     connect(sessionId: string) {
       this.sessionId = sessionId
-      
+
       this.socket = io('http://localhost:3000', {
-        transports: ['websocket']
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 300,
+        reconnectionDelayMax: 1000,
+        timeout: 8000,
+        autoConnect: true
       })
 
       this.socket.on('connect', () => {
         this.isConnected = true
-        console.log('Connected to VelvetSync server')
-        
-        // Join session room
+        console.log('%c[Socket] Verbunden', 'color:#4caf50')
         this.socket?.emit('join-session', sessionId)
       })
 
-      this.socket.on('disconnect', () => {
+      this.socket.on('connect_error', (err) => {
+        console.warn('[Socket] Verbindungsfehler, retry...', err.message)
+      })
+
+      this.socket.on('disconnect', (reason) => {
         this.isConnected = false
-        console.log('Disconnected from server')
+        console.log('[Socket] Getrennt:', reason)
       })
 
       this.socket.on('chat-response', (message: Message) => {

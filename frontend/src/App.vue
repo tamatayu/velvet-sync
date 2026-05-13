@@ -29,6 +29,9 @@ const sendMessage = async () => {
     <header class="header">
       <h1>VelvetSync</h1>
       <PersonaSelector />
+      <div v-if="!chatStore.isConnected" class="connection-status">
+        Verbinde mit Server...
+      </div>
       <div class="status">
         <span :class="{ connected: chatStore.isConnected }">
           {{ chatStore.isConnected ? '● Verbunden' : '○ Getrennt' }}
