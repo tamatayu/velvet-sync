@@ -3,11 +3,13 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useSessionStore } from '@/stores/session'
 import PersonaSelector from '@/components/PersonaSelector.vue'
+import SessionControls from '@/components/SessionControls.vue'
 
 const chatStore = useChatStore()
 const sessionStore = useSessionStore()
 
-const messageInput = ref('')
+const messageInput = ref('
+')
 const messagesContainer = ref<HTMLElement | null>(null)
 
 const sendMessage = async () => {
@@ -22,6 +24,16 @@ const sendMessage = async () => {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
 }
+
+const joinSession = () => {
+  const sessionId = sessionStore.sessionId || 'demo-session'
+  sessionStore.setSessionId(sessionId)
+  chatStore.connect(sessionId)
+}
+
+onMounted(() => {
+  joinSession()
+})
 </script>
 
 <template>
@@ -29,9 +41,7 @@ const sendMessage = async () => {
     <header class="header">
       <h1>VelvetSync</h1>
       <PersonaSelector />
-      <div v-if="!chatStore.isConnected" class="connection-status">
-        Verbinde mit Server...
-      </div>
+      <SessionControls />
       <div class="status">
         <span :class="{ connected: chatStore.isConnected }">
           {{ chatStore.isConnected ? '● Verbunden' : '○ Getrennt' }}
