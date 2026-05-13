@@ -8,8 +8,7 @@ import SessionControls from '@/components/SessionControls.vue'
 const chatStore = useChatStore()
 const sessionStore = useSessionStore()
 
-const messageInput = ref('
-')
+const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 
 const sendMessage = async () => {
