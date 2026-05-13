@@ -1,30 +1,32 @@
 import { injectable, inject } from 'tsyringe';
 import { LLMService } from './LLMService';
+import { PersonaService } from './PersonaService';
 import { IChatService, ChatMessage, ChatResponse } from '../core/interfaces/IChatService';
 
 interface SessionData {
   messages: ChatMessage[];
   lastActivity: Date;
-  persona: any;
+  personaId: string;
 }
 
 @injectable()
 export class ChatService implements IChatService {
   private sessions = new Map<string, SessionData>();
 
-  constructor(@inject(LLMService) private llmService: LLMService) {}
+  constructor(
+    @inject(LLMService) private llmService: LLMService,
+    @inject(PersonaService) private personaService: PersonaService
+  ) {}
 
   async sendUserMessage(sessionId: string, content: string): Promise<ChatResponse> {
     // Get or create session
     let session = this.sessions.get(sessionId);
     if (!session) {
+      const defaultPersona = this.personaService.getDefaultPersona();
       session = {
         messages: [],
         lastActivity: new Date(),
-        persona: { 
-          name: "Luna", 
-          description: "Verspielte, dominante Companion die gerne tease und control" 
-        }
+        personaId: defaultPersona.id
       };
       this.sessions.set(sessionId, session);
     }
@@ -46,10 +48,11 @@ export class ChatService implements IChatService {
     }));
 
     // Generate AI response
+    const persona = this.personaService.getPersonaById(session.personaId) || this.personaService.getDefaultPersona();
     const aiResponseText = await this.llmService.generateResponse(
       sessionId,
       content,
-      session.persona,
+      persona,
       contextForLLM
     );
 
