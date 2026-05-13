@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import pino from 'pino';
 import { container } from 'tsyringe';
 import { ChatService } from '../services/ChatService';
+import personaRoutes from '../routes/persona.routes';
 
 dotenv.config();
 
@@ -46,14 +47,16 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes (placeholder for future)
+// API Routes
+app.use('/api/personas', personaRoutes);
+
 app.get('/api/status', (req, res) => {
   res.json({
     server: 'VelvetSync',
     version: '2.0.0',
     services: {
       ollama: 'connected',
-      handy: 'disconnected' // will be updated later
+      handy: 'disconnected'
     }
   });
 });
