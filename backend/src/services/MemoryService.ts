@@ -58,7 +58,7 @@ export class MemoryService {
    * Creates a summary of the current session using a small fast model
    */
   async summarizeSession(sessionId: string): Promise<SessionSummary | null> {
-    const messages = this.chatService.getHistory(sessionId);
+    const messages = await this.chatService.getHistory(sessionId);
     if (messages.length < 4) return null; // Too short to summarize
 
     const conversationText = messages
