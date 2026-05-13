@@ -2,6 +2,7 @@ import { injectable, inject } from 'tsyringe';
 import { LLMService } from './LLMService';
 import { PersonaService } from './PersonaService';
 import { MemoryService } from './MemoryService';
+import { ModeManager } from './ModeManager';
 import { IChatService, ChatMessage, ChatResponse } from '../core/interfaces/IChatService';
 
 interface SessionData {
@@ -19,7 +20,8 @@ export class ChatService implements IChatService {
   constructor(
     @inject(LLMService) private llmService: LLMService,
     @inject(PersonaService) private personaService: PersonaService,
-    @inject(MemoryService) private memoryService: MemoryService
+    @inject(MemoryService) private memoryService: MemoryService,
+    @inject(ModeManager) private modeManager: ModeManager
   ) {}
 
   async sendUserMessage(sessionId: string, content: string): Promise<ChatResponse> {

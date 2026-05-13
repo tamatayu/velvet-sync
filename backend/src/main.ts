@@ -8,6 +8,7 @@ container.register('IChatService', { useClass: (await import('./services/ChatSer
 container.register('PersonaService', { useClass: (await import('./services/PersonaService')).PersonaService });
 container.register('MemoryService', { useClass: (await import('./services/MemoryService')).MemoryService });
 container.register('ProfileService', { useClass: (await import('./services/ProfileService')).ProfileService });
+container.register('ModeManager', { useClass: (await import('./services/ModeManager')).ModeManager });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
