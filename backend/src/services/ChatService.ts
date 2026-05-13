@@ -1,6 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { LLMService } from './LLMService';
 import { PersonaService } from './PersonaService';
+import { MemoryService } from './MemoryService';
 import { IChatService, ChatMessage, ChatResponse } from '../core/interfaces/IChatService';
 
 interface SessionData {
@@ -15,7 +16,8 @@ export class ChatService implements IChatService {
 
   constructor(
     @inject(LLMService) private llmService: LLMService,
-    @inject(PersonaService) private personaService: PersonaService
+    @inject(PersonaService) private personaService: PersonaService,
+    @inject(MemoryService) private memoryService: MemoryService
   ) {}
 
   async sendUserMessage(sessionId: string, content: string): Promise<ChatResponse> {
@@ -47,13 +49,19 @@ export class ChatService implements IChatService {
       content: m.content
     }));
 
-    // Generate AI response
+    // Generate AI response with memory context
     const persona = this.personaService.getPersonaById(session.personaId) || this.personaService.getDefaultPersona();
+    const memoryContext = this.memoryService.getRelevantMemories(sessionId);
+    
+    const enhancedContext = memoryContext 
+      ? `${memoryContext}\n\nAktueller Gesprächsv erlauf:\n${contextForLLM.map(m => `${m.role}: ${m.content}`).join('\n')}`
+      : contextForLLM.map(m => `${m.role}: ${m.content}`).join('\n');
+
     const aiResponseText = await this.llmService.generateResponse(
       sessionId,
       content,
       persona,
-      contextForLLM
+      enhancedContext
     );
 
     // Add assistant message
