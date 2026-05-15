@@ -10,6 +10,18 @@
 - **Phasen**: Ständiger Wechsel zwischen **GO** (Stimulation) und **STOP** (Abkühlen)
 - **Intensität**: Steigt graduell, aber nicht linear (unterschiedliche Scripts haben unterschiedliche Intensitäten)
 - **Finale Phase**: Keine Pausen mehr – moderates Script, das graduell intensiver wird
+- **AI Reaktion**: Die AI Persona muss immer auf Nutzereingaben oder Phasenwechsel reagieren — egal ob:
+  - Normale Chat-Nachricht
+  - Shortcut-Signal ("close", "orgasm", "milking", etc.)
+  - Antwort auf eine AI-Frage (auch bei Timeout)
+  - Wechsel in eine andere Phase/Modus (Verlängerung, Finale Phase, etc.)
+  
+    **Ausnahme**:
+      - Interne Modus-Phasen, die automatisch und wiederholt wechseln (z. B. der ständige Wechsel zwischen GO und STOP in Stop & Go), werden nicht kommentiert.
+    
+    Das bedeutet konkret:
+      - Jedes "close", "orgasm", "milking", jede Antwort auf eine Frage und jeder Phasenwechsel (außer GO/STOP) muss von der AI kommentiert werden.
+Es darf keine stillen Phasenwechsel oder ignorierten Signale geben (außer den internen GO/STOP Wechseln).
 
 ---
 
