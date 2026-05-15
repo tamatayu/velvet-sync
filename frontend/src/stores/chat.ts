@@ -37,9 +37,9 @@ export const useChatStore = defineStore('chat', {
       this.socket = io('http://localhost:3000', {
         transports: ['websocket'],
         autoConnect: false,
-        reconnection: false,
-        reconnectionDelay: 200,
-        reconnectionDelayMax: 1000
+        reconnection: true,              // Später aktivieren
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 3000
       })
 
       // Logging

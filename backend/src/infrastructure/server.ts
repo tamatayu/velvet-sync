@@ -32,8 +32,8 @@ const io = new SocketIOServer(httpServer, {
     credentials: true
   },
   transports: ['websocket'],
-  pingInterval: 10000,
-  pingTimeout: 5000,
+  pingInterval: 20000,
+  pingTimeout: 10000,
   allowEIO3: false
 });
 
