@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { io, Socket } from 'socket.io-client'
-import { DEBUG_SOCKET } from '@/config'
+import { DEBUG_SOCKET } from '../config'
 
 interface Message {
   id: string
@@ -28,7 +28,7 @@ export const useChatStore = defineStore('chat', {
       }
 
       this.socket = io('http://localhost:3000', {
-        transports: ['websocket'],
+        transports: [ 'websocket' ],
         autoConnect: false,           // Wichtig: Manuelle Verbindung
         reconnectionDelay: 300,       // Schnellerer Reconnect
         reconnectionDelayMax: 2000,
@@ -86,3 +86,5 @@ export const useChatStore = defineStore('chat', {
       // Manuell verbinden (so früh wie möglich)
       this.socket.connect()
     },
+  }
+})
