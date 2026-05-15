@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { io, Socket } from 'socket.io-client'
-import { DEBUG_SOCKET } from '../config'
+import { DEBUG_SOCKET } from '@/config'
 
 interface Message {
   id: string
@@ -24,15 +24,16 @@ export const useChatStore = defineStore('chat', {
       const startTime = Date.now()
 
       if (DEBUG_SOCKET) {
+        console.log(`[Socket] Creating connection at ${new Date().toISOString()}`)
         console.log('[Socket] Creating connection for session:', sessionId)
       }
 
       this.socket = io('http://localhost:3000', {
-        transports: [ 'websocket' ],
-        autoConnect: false,           // Wichtig: Manuelle Verbindung
-        reconnectionDelay: 300,       // Schnellerer Reconnect
-        reconnectionDelayMax: 2000,
-        forceNew: true
+        transports: ['websocket'],
+        autoConnect: false,
+        reconnection: false,          // Kein automatisches Reconnect während Dev
+        reconnectionDelay: 200,
+        reconnectionDelayMax: 1000
       })
 
       // Logging
@@ -86,5 +87,35 @@ export const useChatStore = defineStore('chat', {
       // Manuell verbinden (so früh wie möglich)
       this.socket.connect()
     },
+
+    async sendMessage(content: string) {
+      if (!this.socket || !this.isConnected) {
+        console.error('Not connected')
+        return
+      }
+
+      // Add user message immediately
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content,
+        timestamp: new Date()
+      }
+      this.messages.push(userMessage)
+
+      // Send to server
+      this.socket.emit('chat-message', {
+        sessionId: this.sessionId,
+        content
+      })
+    },
+
+    disconnect() {
+      if (this.socket) {
+        this.socket.disconnect()
+        this.socket = null
+      }
+      this.isConnected = false
+    }
   }
 })
