@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { io, Socket } from 'socket.io-client'
+import { DEBUG_SOCKET } from '@/config'
 
 interface Message {
   id: string
@@ -20,29 +21,54 @@ export const useChatStore = defineStore('chat', {
     connect(sessionId: string) {
       this.sessionId = sessionId
 
+      const startTime = Date.now()
+
+      if (DEBUG_SOCKET) {
+        console.log('[Socket] Creating connection for session:', sessionId)
+      }
+
       this.socket = io('http://localhost:3000', {
         transports: ['websocket'],
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 300,
-        reconnectionDelayMax: 1000,
-        timeout: 8000,
-        autoConnect: true
+        autoConnect: false,           // Wichtig: Manuelle Verbindung
+        reconnectionDelay: 300,       // Schnellerer Reconnect
+        reconnectionDelayMax: 2000,
+        forceNew: true
       })
+
+      // Logging
+      if (DEBUG_SOCKET) {
+        this.socket.onAny((event, ...args) => {
+          console.log(`[Socket] Event: ${event}`, args)
+        })
+      }
 
       this.socket.on('connect', () => {
+        const connectTime = Date.now() - startTime
         this.isConnected = true
-        console.log('%c[Socket] Verbunden', 'color:#4caf50')
-        this.socket?.emit('join-session', sessionId)
-      })
 
-      this.socket.on('connect_error', (err) => {
-        console.warn('[Socket] Verbindungsfehler, retry...', err.message)
+        if (DEBUG_SOCKET) {
+          console.log(`[Socket] Connected in ${connectTime}ms`)
+        } else {
+          console.log('Connected to VelvetSync server')
+        }
+
+        // Join session room
+        this.socket?.emit('join-session', sessionId)
       })
 
       this.socket.on('disconnect', (reason) => {
         this.isConnected = false
-        console.log('[Socket] Getrennt:', reason)
+        if (DEBUG_SOCKET) {
+          console.log('[Socket] Disconnected:', reason)
+        } else {
+          console.log('Disconnected from server')
+        }
+      })
+
+      this.socket.on('connect_error', (err) => {
+        if (DEBUG_SOCKET) {
+          console.error('[Socket] Connect error:', err.message)
+        }
       })
 
       this.socket.on('chat-response', (message: Message) => {
@@ -56,36 +82,7 @@ export const useChatStore = defineStore('chat', {
       this.socket.on('toy-status', (status: any) => {
         console.log('Toy status:', status)
       })
+
+      // Manuell verbinden (so früh wie möglich)
+      this.socket.connect()
     },
-
-    async sendMessage(content: string) {
-      if (!this.socket || !this.isConnected) {
-        console.error('Not connected')
-        return
-      }
-
-      // Add user message immediately
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        role: 'user',
-        content,
-        timestamp: new Date()
-      }
-      this.messages.push(userMessage)
-
-      // Send to server
-      this.socket.emit('chat-message', {
-        sessionId: this.sessionId,
-        content
-      })
-    },
-
-    disconnect() {
-      if (this.socket) {
-        this.socket.disconnect()
-        this.socket = null
-      }
-      this.isConnected = false
-    }
-  }
-})
