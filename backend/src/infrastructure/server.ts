@@ -27,7 +27,11 @@ const io = new SocketIOServer(httpServer, {
     origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST'],
     credentials: true
-  }
+  },
+  transports: ['websocket'],           // Nur WebSocket, kein Polling
+  pingInterval: 10000,                 // 10 Sekunden
+  pingTimeout: 5000,                   // 5 Sekunden
+  allowEIO3: false
 });
 
 const PORT = process.env.PORT || 3000;
