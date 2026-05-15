@@ -24,13 +24,16 @@ const app = express();
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173'
+    ],
     methods: ['GET', 'POST'],
     credentials: true
   },
-  transports: ['websocket'],           // Nur WebSocket, kein Polling
-  pingInterval: 10000,                 // 10 Sekunden
-  pingTimeout: 5000,                   // 5 Sekunden
+  transports: ['websocket'],
+  pingInterval: 10000,
+  pingTimeout: 5000,
   allowEIO3: false
 });
 
@@ -38,7 +41,10 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+  ],
   credentials: true
 }));
 app.use(express.json());
