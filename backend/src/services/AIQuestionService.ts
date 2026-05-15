@@ -60,10 +60,16 @@ export class AIQuestionService {
   }
 
   /**
-   * Simuliert eine AI-Antwort (später durch echten LLM-Call ersetzen)
+   * Simuliert eine AI-Antwort mit Timeout-Logik
+   * Wenn keine Antwort innerhalb von timeoutMs kommt → automatisch "Yes"
    */
-  async getAIResponse(questionType: QuestionType, context: string = ''): Promise<string> {
-    // Placeholder - später mit echtem LLM
+  async getAIResponseWithTimeout(
+    questionType: QuestionType, 
+    context: string = '', 
+    timeoutMs: number = 8000
+  ): Promise<{ response: string; timedOut: boolean }> {
+    
+    // Placeholder - später echter LLM Call mit Timeout
     const responses = {
       'holding_up': ["I'm doing okay...", "It's getting intense...", "I can still take more"],
       'ready_to_continue': ["Yes", "Please continue", "I'm ready"],
@@ -71,7 +77,22 @@ export class AIQuestionService {
       'ready_for_reward': ["Yes", "Please", "I'm ready"]
     };
 
-    const possibleAnswers = responses[questionType] || ["Yes"];
-    return possibleAnswers[Math.floor(Math.random() * possibleAnswers.length)];
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        // Timeout → automatisch "Yes" annehmen
+        resolve({ 
+          response: "Yes", 
+          timedOut: true 
+        });
+      }, timeoutMs);
+
+      // Simulierte schnelle Antwort (später echter LLM)
+      setTimeout(() => {
+        clearTimeout(timeout);
+        const possibleAnswers = responses[questionType] || ["Yes"];
+        const response = possibleAnswers[Math.floor(Math.random() * possibleAnswers.length)];
+        resolve({ response, timedOut: false });
+      }, 300); // Simulierte Antwortzeit
+    });
   }
 }
