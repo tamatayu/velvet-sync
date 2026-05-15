@@ -33,10 +33,9 @@ VelvetSync ist eine **modulare Erotik-AI-Plattform** mit The-Handy-Integration. 
 - Integration von Pattern Generator + The Handy
 
 ## Nächste Prioritäten
-1. Socket.io Verbindungsproblem lösen (serverseitig)
-2. `StopAndGoModule` fertigstellen (Phasen, Intensitätssteigerung, Milking-Logik)
-3. `EdgingModule` implementieren
-4. Pattern Generator + HandyAdapter
+1. `StopAndGoModule` fertigstellen (Phasen, Intensitätssteigerung, Milking-Logik)
+2. `EdgingModule` implementieren
+3. Pattern Generator + HandyAdapter
 
 ## Wichtige Dateien
 - `backend/src/services/ModeManager.ts`
