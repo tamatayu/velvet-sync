@@ -1,32 +1,58 @@
 import { injectable } from 'tsyringe';
-import { Persona, DEFAULT_PERSONAS } from '../core/entities/Persona';
 import fs from 'node:fs';
 import path from 'node:path';
 
+export interface Persona {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: number;        // 0-100 (0 = very lenient, 100 = very strict)
+  systemPrompt: string;
+}
+
+const DEFAULT_PERSONAS: Persona[] = [
+  {
+    id: 'vanilla',
+    name: 'Vanilla',
+    description: 'A sweet and teasing companion who loves to play with you.',
+    difficulty: 40,
+    systemPrompt: `You are a sweet, teasing, and affectionate AI companion...`
+  }
+];
+
 @injectable()
 export class PersonaService {
-  private readonly personasFile: string;
-  private personas: Map<string, Persona> = new Map();
+  private personas = new Map<string, Persona>();
+  private currentPersonaId: string = 'vanilla';
 
   constructor() {
-    this.personasFile = path.resolve('data/personas.json');
     this.loadPersonas();
   }
 
   private loadPersonas() {
-    // Load defaults first
-    DEFAULT_PERSONAS.forEach(p => this.personas.set(p.id, p));
-
-    // Try to load custom personas from file
     try {
-      if (fs.existsSync(this.personasFile)) {
-        const data = JSON.parse(fs.readFileSync(this.personasFile, 'utf8'));
-        data.forEach((p: any) => {
-          this.personas.set(p.id, new Persona(p));
-        });
+      const filePath = path.resolve('data/personas.json');
+      if (fs.existsSync(filePath)) {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        data.forEach((p: Persona) => this.personas.set(p.id, p));
+      } else {
+        // Load defaults
+        DEFAULT_PERSONAS.forEach(p => this.personas.set(p.id, p));
       }
     } catch (e) {
-      console.warn('[PersonaService] Could not load custom personas, using defaults only');
+      console.warn('[PersonaService] Could not load personas, using defaults');
+      DEFAULT_PERSONAS.forEach(p => this.personas.set(p.id, p));
+    }
+  }
+
+  private savePersonas() {
+    try {
+      const filePath = path.resolve('data/personas.json');
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(filePath, JSON.stringify(Array.from(this.personas.values()), null, 2));
+    } catch (e) {
+      console.error('[PersonaService] Failed to save personas');
     }
   }
 
@@ -38,8 +64,20 @@ export class PersonaService {
     return this.personas.get(id);
   }
 
+  getCurrentPersona(): Persona | undefined {
+    return this.personas.get(this.currentPersonaId);
+  }
+
+  setCurrentPersona(id: string): boolean {
+    if (this.personas.has(id)) {
+      this.currentPersonaId = id;
+      return true;
+    }
+    return false;
+  }
+
   getDefaultPersona(): Persona {
-    return this.personas.get('luna') || DEFAULT_PERSONAS[0];
+    return this.personas.get('vanilla') || DEFAULT_PERSONAS[0];
   }
 
   createPersona(data: Partial<Persona> & { name: string; description: string }): Persona {
@@ -53,27 +91,19 @@ export class PersonaService {
     const existing = this.personas.get(id);
     if (!existing) return undefined;
 
-    const updated = new Persona({ ...existing, ...updates, id });
-    this.personas.set(id, updated);
+    Object.assign(existing, updates);
     this.savePersonas();
-    return updated;
+    return existing;
   }
 
   deletePersona(id: string): boolean {
-    const deleted = this.personas.delete(id);
-    if (deleted) this.savePersonas();
-    return deleted;
-  }
+    if (!this.personas.has(id)) return false;
+    this.personas.delete(id);
 
-  private savePersonas() {
-    try {
-      const dir = path.dirname(this.personasFile);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-      const data = Array.from(this.personas.values()).filter(p => !DEFAULT_PERSONAS.some(d => d.id === p.id));
-      fs.writeFileSync(this.personasFile, JSON.stringify(data, null, 2));
-    } catch (e) {
-      console.error('[PersonaService] Failed to save personas:', e);
+    if (this.currentPersonaId === id) {
+      this.currentPersonaId = 'vanilla';
     }
+    this.savePersonas();
+    return true;
   }
 }
