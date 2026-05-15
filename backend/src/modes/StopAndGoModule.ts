@@ -1,4 +1,6 @@
 import { IModeModule, ModeType } from './IModeModule';
+import { container } from 'tsyringe';
+import { ModeConfigService } from '../services/ModeConfigService';
 
 export class StopAndGoModule implements IModeModule {
   readonly name = 'Stop & Go';
@@ -6,43 +8,72 @@ export class StopAndGoModule implements IModeModule {
 
   private phase: 'go' | 'stop' | 'milking' = 'go';
   private phaseStartTime: number = Date.now();
-  private minDuration: number;           // in seconds (set secretly by AI at start)
-  private intensityLevel: number = 0;    // 0-100, increases over time
+  private minDuration: number = 0;
+  private targetEndTime: number = 0;
+  private intensityLevel: number = 0;
   private milkingRequested: boolean = false;
   private milkingStartTime: number = 0;
   private firstOrgasmTime: number = 0;
+  private hasAskedAtMinDuration: boolean = false;
+
+  private configService = container.resolve(ModeConfigService);
+  private config = this.configService.getStopGoConfig();
 
   onStart(): void {
     this.phase = 'go';
     this.phaseStartTime = Date.now();
     this.intensityLevel = 10;
-    // AI secretly sets minimum duration (example: 180-420 seconds)
-    this.minDuration = 180 + Math.floor(Math.random() * 240);
-    console.log(`[StopAndGo] Mode started. Min duration: ${this.minDuration}s`);
+    this.hasAskedAtMinDuration = false;
+
+    const variance = Math.max(60, this.config.durationVariance);
+    const baseDuration = this.config.baseDuration;
+
+    this.minDuration = Math.floor(baseDuration - variance);
+    this.targetEndTime = this.minDuration + Math.max(60, variance);
+
+    console.log(`[StopAndGo] Mode started. Min duration: ${this.minDuration}s, Target end: ${this.targetEndTime}s`);
   }
 
   onTick(): void {
     const now = Date.now();
     const elapsed = (now - this.phaseStartTime) / 1000;
 
-    // Increase intensity slowly over time
+    // Dynamische Intensitätssteigerung
+    const minDurationPoint = this.minDuration;
+    const targetEnd = this.targetEndTime;
+
     if (this.phase !== 'milking') {
-      this.intensityLevel = Math.min(100, this.intensityLevel + 0.1);
+      if (elapsed < minDurationPoint) {
+        // 0% → 75% bis zur MinDuration
+        const progress = Math.min(1, elapsed / minDurationPoint);
+        this.intensityLevel = Math.floor(75 * progress);
+      } else {
+        // 75% → 100% bis zum Zielende
+        const remainingProgress = Math.min(1, (elapsed - minDurationPoint) / (targetEnd - minDurationPoint));
+        this.intensityLevel = Math.floor(75 + (25 * remainingProgress));
+      }
     }
 
-    // Handle phase switching (simple random for now)
+    // Phasen-Wechsel (einfache Logik für den Anfang)
     if (this.phase === 'go' && elapsed > 25 + Math.random() * 20) {
       this.switchToStop();
     } else if (this.phase === 'stop' && elapsed > 12 + Math.random() * 18) {
       this.switchToGo();
     }
 
-    // Milking logic
+    // Milking Logik
     if (this.phase === 'milking' && this.firstOrgasmTime > 0) {
       const timeSinceFirstOrgasm = (now - this.firstOrgasmTime) / 1000;
       if (timeSinceFirstOrgasm > 30) {
         this.endMilking();
       }
+    }
+
+    // AI-Frage bei MinDuration (75% Intensität)
+    if (!this.hasAskedAtMinDuration && elapsed >= this.minDuration && this.phase !== 'milking') {
+      this.hasAskedAtMinDuration = true;
+      console.log('[StopAndGo] AI should ask: "How are you holding up?" (75% intensity reached)');
+      // Später: Event an ModeManager / AI senden
     }
   }
 
@@ -55,16 +86,7 @@ export class StopAndGoModule implements IModeModule {
     }
 
     if (lower.includes('nah') || lower.includes('close') || lower.includes('komme')) {
-      if (this.phase === 'go' && !this.milkingRequested) {
-        // User is close too early → decide based on difficulty
-        const shouldGiveBreak = Math.random() > 0.6; // 40% chance to be strict
-        if (shouldGiveBreak) {
-          this.switchToStop();
-          console.log('[StopAndGo] User was close early → gave break');
-        } else {
-          console.log('[StopAndGo] User was close early → ignored (strict mode)');
-        }
-      }
+      this.handleCloseSignal();
     }
 
     if (lower.includes('orgasm') || lower.includes('komme') || lower.includes('spritze')) {
@@ -73,6 +95,25 @@ export class StopAndGoModule implements IModeModule {
         console.log('[StopAndGo] First orgasm during milking');
       } else if (this.phase === 'milking' && this.firstOrgasmTime > 0) {
         this.endMilking();
+      }
+    }
+  }
+
+  private handleCloseSignal() {
+    const elapsed = (Date.now() - this.phaseStartTime) / 1000;
+
+    if (elapsed < this.minDuration) {
+      // Vor der MinDuration-Marke → streng behandeln
+      console.log('[StopAndGo] Early close signal before min duration');
+      // TODO: Je nach Persona → Pause geben oder streng bleiben
+      this.switchToStop();
+    } else if (elapsed < this.targetEndTime) {
+      // Zwischen MinDuration und Zielende
+      if (this.hasAskedAtMinDuration) {
+        console.log('[StopAndGo] Close signal after question → OK (continue)');
+      } else {
+        console.log('[StopAndGo] Close signal without prior question → slightly strict');
+        this.switchToStop();
       }
     }
   }
@@ -88,8 +129,7 @@ export class StopAndGoModule implements IModeModule {
     this.firstOrgasmTime = 0;
 
     console.log('[StopAndGo] Milking accepted! Extra time required.');
-
-    return { accepted: true, extraTime: Math.floor(this.minDuration * 0.2) };
+    return { accepted: true, extraTime: Math.floor(this.config.extensionBaseDuration * 0.2) };
   }
 
   private switchToGo() {
