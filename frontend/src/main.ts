@@ -1,18 +1,20 @@
-import { createApp } from 'vue';
-import { createPinia } from 'pinia';
-// @ts-ignore
-import App from './App.vue';
-import './style.css';
-import { useChatStore } from './stores/chat';
-import { useSessionStore } from './stores/session';
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+import './style.css'
+import { useChatStore } from './stores/chat'
+import { useSessionStore } from './stores/session'
 
 const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
 
-// ⚡ Sofort nach App-Start Verbindung aufbauen
-const sessionStore = useSessionStore()
-const chatStore = useChatStore()
-chatStore.connect(sessionStore.sessionId)
+// Zentrale Socket-Verbindung (nur einmal!)
+const sessionStore = useSessionStore(pinia)
+const chatStore = useChatStore(pinia)
+
+const sessionId = sessionStore.sessionId || 'demo-session'
+sessionStore.setSessionId(sessionId)
+chatStore.connect(sessionId)
 
 app.mount('#app')

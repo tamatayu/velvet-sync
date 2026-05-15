@@ -28,21 +28,7 @@ const sendMessage = async () => {
   }
 }
 
-const joinSession = () => {
-  const sessionId = sessionStore.sessionId || 'demo-session'
-  sessionStore.setSessionId(sessionId)
-  chatStore.connect(sessionId)
-}
-
-onMounted(() => {
-  joinSession()
-  
-  // Show settings dialog on every start
-  const hasSettings = localStorage.getItem('velvet-settings')
-  if (!hasSettings) {
-    showSettings.value = true
-  }
-})
+// Socket connection is now handled centrally in main.ts
 
 const closeSettings = () => {
   showSettings.value = false
