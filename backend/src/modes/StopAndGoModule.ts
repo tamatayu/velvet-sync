@@ -2,6 +2,7 @@ import { IModeModule, ModeType } from './IModeModule';
 import { container } from 'tsyringe';
 import { ModeConfigService } from '../services/ModeConfigService';
 import { AIQuestionService } from '../services/AIQuestionService';
+import { PersonaService } from '../services/PersonaService';
 
 export class StopAndGoModule implements IModeModule {
   readonly name = 'Stop & Go';
@@ -20,6 +21,7 @@ export class StopAndGoModule implements IModeModule {
   private configService = container.resolve(ModeConfigService);
   private config = this.configService.getStopGoConfig();
   private questionService = container.resolve(AIQuestionService);
+  private personaService = container.resolve(PersonaService);
 
   onStart(): void {
     this.phase = 'go';
@@ -75,8 +77,9 @@ export class StopAndGoModule implements IModeModule {
     if (!this.hasAskedAtMinDuration && elapsed >= this.minDuration && this.phase !== 'milking') {
       this.hasAskedAtMinDuration = true;
 
-      // Entscheidung basierend auf Difficulty (später von Persona kommen)
-      const difficulty = 50; // Placeholder
+      // Difficulty aus aktueller Persona laden
+      const currentPersona = this.personaService.getCurrentPersona();
+      const difficulty = currentPersona?.difficulty ?? 50;
       const shouldAsk = this.questionService.shouldAskQuestion('holding_up', difficulty);
 
       if (shouldAsk) {
