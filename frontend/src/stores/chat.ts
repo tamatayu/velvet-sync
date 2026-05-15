@@ -19,6 +19,12 @@ export const useChatStore = defineStore('chat', {
 
   actions: {
     connect(sessionId: string) {
+      // Guard: Nur einmal pro Session verbinden
+      if (this.socket && this.isConnected) {
+        if (DEBUG_SOCKET) console.log('[Socket] Already connected, skipping')
+        return
+      }
+
       this.sessionId = sessionId
 
       const startTime = Date.now()
@@ -31,7 +37,7 @@ export const useChatStore = defineStore('chat', {
       this.socket = io('http://localhost:3000', {
         transports: ['websocket'],
         autoConnect: false,
-        reconnection: false,          // Kein automatisches Reconnect während Dev
+        reconnection: false,
         reconnectionDelay: 200,
         reconnectionDelayMax: 1000
       })
