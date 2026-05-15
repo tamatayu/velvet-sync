@@ -1,222 +1,173 @@
-# Stop & Go - Vollständiges Entscheidungsdiagramm
+# Stop & Go - Vollständiges Entscheidungsdiagramm (Korrigierte Version)
 
-## Grundlegende Zustände
-
-- **GO** → Stroker läuft
-- **STOP** → Stroker steht still
-- **MILKING** → Spezieller intensiver Modus (nach Verlängerung)
-- **ENDED** → Modus beendet
+**Stand: 15. Mai 2026 – Finale Spezifikation**
 
 ---
 
-## 1. Start des Modus
+## Grundlegende Prinzipien
+
+- **Ziel des Nutzers**: Die komplette Session bis zum definierten Ende durchhalten
+- **Phasen**: Ständiger Wechsel zwischen **GO** (Stimulation) und **STOP** (Abkühlen)
+- **Intensität**: Steigt graduell, aber nicht linear (unterschiedliche Scripts haben unterschiedliche Intensitäten)
+- **Finale Phase**: Keine Pausen mehr – moderates Script, das graduell intensiver wird
+
+---
+
+## 1. Normaler Ablauf
+
+### 1.1 Start
 
 ```
 onStart()
-├── Berechne minDuration = baseDuration - variance (min. 60s)
-├── Berechne targetEndTime = minDuration + variance (mind. 1 Min Abstand)
-├── Setze Intensität = 10%
-└── Phase = GO
+├── Berechne minDuration + targetEndTime (mit min. 60s Variance + 1 Min Abstand)
+├── Phase = GO
+└── Intensität = 10%
+```
+
+### 1.2 Während der Session
+
+```
+Wechsel zwischen GO und STOP
+├── GO-Phasen: Intensität steigt graduell (nicht linear)
+└── STOP-Phasen: Abkühlen
+```
+
+
+### 1.3 Am Ende der Session (targetEndTime erreicht)
+
+```
+AI: "Du hast es geschafft. Jetzt kommt das Ende."
+→ Starte moderates Script, das graduell intensiver wird (keine Pausen)
+→ Warte auf User-Signal ("close" oder "orgasm")
+```
+
+### 1.4 Finale Phase
+
+```
+User signalisiert "close" oder "orgasm":
+├── AI kommentiert das Signal
+├── Wechsel in intensives Orgasm-Script
+├── Script läuft 5–10 Sekunden nach dem Signal weiter
+├── Wechsel in sehr langsames Aftercare-Script
+└── AI fragt: "Wie war es? Möchtest du noch etwas schreiben?"
+    ├── Ja → Modus endet, normaler Chat läuft weiter
+    ├── Nein → AI verabschiedet sich + speichert + Server beendet sich
+    └── Timeout → Automatisch "Nein" annehmen
 ```
 
 ---
 
-## 2. AI-Frage bei minDuration (75% Intensität)
+## 2. Spezialfälle
 
-**Bedingung:** `elapsed >= minDuration && !hasAskedAtMinDuration && Phase != MILKING`
+### 2.1 Milking (Verlängerung)
 
-```
-Frage stellen?
-├── Ja (Difficulty-basiert)
-│   ├── AI fragt: "Du hast es fast geschafft, hältst du noch durch?"
-│   ├── Warte auf Antwort (mit Timeout)
-│   │   ├── Antwort = "Ja" / "Ich kann noch" → Weiter bis targetEndTime
-│   │   ├── Antwort = "Nein" / "Nicht mehr lange" → Je nach Difficulty:
-│   │   │   ├── Niedrig/Mittel → Ermutigen + weiter machen
-│   │   │   └── Hoch → "Dann sag Bescheid, wenn du nicht mehr kannst"
-│   │   └── Timeout → Automatisch "Ja" annehmen
-│   └── hasAskedAtMinDuration = true
-└── Nein (hohe Difficulty)
-    └── Keine Frage, einfach weiter bis targetEndTime
-```
-
----
-
-## 3. User meldet "close" / "nah"
-
-### 3.1 Vor minDuration
-
-```
-Signal: "close"
-→ Phase = STOP
-→ Intensität -= 25% (min. 10%)
-→ AI sagt etwas wie: "Gut, dann ruhen wir uns kurz aus..."
-```
-
-### 3.2 Nach minDuration
-
-#### Fall A: AI hat bei 75% gefragt
-
-```
-Signal: "close"
-→ Phase = STOP (kurz)
-→ AI sagt: "Gut, dann noch etwas länger..." oder "Dann halten wir noch etwas durch"
-→ Phase = GO (weiter bis targetEndTime)
-```
-
-#### Fall B: AI hat bei 75% **nicht** gefragt
-
-```
-Signal: "close"
-→ Phase = STOP
-→ Intensität leicht senken
-→ AI sagt: "Dann ruhen wir uns kurz..." (etwas strenger als bei Fall A)
-```
-
-### 3.3 Nach Verlängerung (Milking)
-
-```
-Signal: "close"
-→ Je nach Persona:
-├── Süß / Verständnisvoll → "Gut, dann noch etwas länger..."
-└── Dominant / Streng → "Du hast es selbst gewollt..." (etwas strenger)
-```
-
----
-
-## 4. User meldet "orgasm"
-
-### 4.1 Vor minDuration
-
-#### 4.1.1 Kurz nach "close" (während Pause oder laufendem Script)
-
-```
-→ AI ist enttäuscht
-→ Je nach Difficulty:
-├── Niedrig/Mittel → "Schade, aber gut, dass du es gemeldet hast"
-└── Hoch → "Das war zu früh..." (möglich: Orgasmus ruinieren)
-```
-
-#### 4.1.2 Ohne vorheriges "close"
-
-```
-→ AI ist streng
-→ Je nach Difficulty:
-├── Mittel → "Du hast es nicht gemeldet..."
-└── Hoch → Möglichkeit des Ruins (Persona-abhängig)
-```
-
-### 4.2 Nach minDuration
-
-#### 4.2.1 Nach "close" + Persona erlaubt es
-
-```
-→ AI ist positiv / stolz
-→ "Gut gemacht... jetzt darfst du kommen"
-→ Phase = MILKING (falls gewünscht) oder normaler Orgasmus
-```
-
-#### 4.2.2 Nach "close" + Persona erlaubt es **nicht**
-
-```
-→ AI ist enttäuscht
-→ "Du hast es nicht geschafft..." (leichte Bestrafung möglich)
-```
-
-#### 4.2.3 Ohne vorheriges "close"
-
-```
-→ Je nach Difficulty:
-├── Niedrig → Neutral-positiv
-├── Mittel → Leicht enttäuscht
-└── Hoch → Streng ("Du hättest es melden sollen...")
-```
-
-### 4.3 Nach Verlängerung (Milking)
-
-#### 4.3.1 User hat Milking angefordert und es **nicht** geschafft
-
-```
-→ AI ist enttäuscht + "Du hast es selbst gewollt..."
-→ Leichte Bestrafung möglich (Persona-abhängig)
-```
-
-#### 4.3.2 User hat Milking **nicht** angefordert und es nicht geschafft
-
-```
-→ Normal strenge Reaktion (wie 4.2.3)
-```
-
----
-
-## 5. AI-initiierte Fragen am Ende
-
-### 5.1 Bei Erreichen von targetEndTime
-
-```
-AI fragt: "Bist du bereit für das Ende oder möchtest du noch etwas länger machen?"
-├── Antwort = "Ja" / "Bereit" → Finale Belohnungsphase
-├── Antwort = "Länger" / "Weiter" → Verlängerung (5 Min + Variance)
-│   └── Intensität auf 75% zurücksetzen + neu hochfahren
-└── Timeout → Automatisch "Ja" annehmen
-```
-
-### 5.2 Bei Verlängerungswunsch
-
-```
-AI sagt: "Gut, dann noch etwas länger..." (je nach Persona stolz / dominant / süß)
-→ Neue targetEndTime = aktuelle Zeit + extensionBaseDuration + Variance
-→ Intensität auf 75% zurücksetzen
-```
-
----
-
-## 6. User fragt "milking"
+**Anforderung vor der finalen Phase:**
 
 ```
 User: "milking" / "milk me dry"
-→ AI entscheidet (aktuell immer akzeptieren):
-├── Akzeptiert → Phase = MILKING
-│   ├── Intensität auf 100%
-│   ├── Neue Dauer = extensionBaseDuration + Variance
-│   └── Bei Misserfolg → spezielle Antwort (siehe 4.3.1)
-└── Abgelehnt (später) → "Heute nicht..."
+→ AI entscheidet (aktuell immer akzeptieren)
+├── Akzeptiert:
+│   ├── Session-Dauer wird um ~25% verlängert
+│   ├── User muss länger durchhalten
+│   └── Bei Misserfolg: "Du hast es dir nicht verdient..."
+└── Abgelehnt:
+    └── "Heute nicht..."
+```
+
+**Bei erneutem Anfordern:**
+- AI bleibt bei ihrer ersten Entscheidung
+
+**Wenn User die normale Dauer nicht durchhält, obwohl Milking abgelehnt wurde:**
+- AI kann spöttisch reagieren: "So verdienst du dir kein Milking..."
+
+---
+
+### 2.2 "Close" außerhalb der finalen Phase
+
+#### Vor 75% (minDuration-Marke)
+
+```
+Signal: "close"
+→ AI ist enttäuscht
+→ Je nach Persona:
+├── Pause + Intensität senken ("Gut, dann ruhen wir uns kurz...")
+└── Ignorieren + Ruin (hohe Difficulty/Persona):
+    └── Bei Orgasm-Signal: Script wird sofort gestoppt
 ```
 
 ---
 
-## 7. Erfolgreiches Durchhalten (ohne "close" zu melden)
-
+### 2.3 "Orgasm" außerhalb der finalen Phase (ohne "close")
 ```
-User hält bis targetEndTime durch, ohne jemals "close" zu signalisieren
-→ AI lobt besonders stark
-→ "Du hast es ohne ein einziges Mal zu melden geschafft... beeindruckend"
-→ Finale Belohnungsphase
+Nutzer konnte sich nicht beherrschen und hat es nicht angekündigt
+→ AI ist verärgert + enttäuscht
+→ In den meisten Fällen: Ruinierter Orgasmus
+```
+
+#### Persona-Ausnahme
+```
+Bei Persona mit sehr niedrigen Difficulty, kann auch nach "close" oder "orgasm" ohne "close"
+ein langsames Orgasm-Script (5–10 Sekunden) erlaubt werden (bei "orgasm" ohne "close" sehr unwahrscheinlich)
+→ AI ist trotzdem enttäuscht, aber ruiniert nicht
+→ Ermutigt: "Beim nächsten Mal länger durchhalten"
+Anschließend kein after care script.
+```
+---
+
+### 2.4 Verlängerung am Ende (nur wenn keine Milking-Verlängerung aktiv)
+```
+Am Ende der Session fragt AI:
+"Bist du bereit für das Ende oder möchtest du noch etwas länger machen?"
+├── "Ja" / "Bereit" → Finale Phase (siehe 1.4)
+├── "Länger" / "Weiter" → Verlängerung:
+│   ├── Intensität auf 75% zurücksetzen
+│   ├── Steigt wieder graduell an
+│   └── Am Ende der Verlängerung:
+│       └── AI kann anbieten: "Als Belohnung darf ich dich jetzt melken?"
+│           ├── Ja → Milking-Ende
+│           ├── Nein → Normales Orgasm-Ende
+            └── Timeout → Automatisch "Nein" annehmen
+└── Timeout → Automatisch "Ja" annehmen
+```
+
+**Wichtig:** Diese Frage kommt **nur**, wenn keine Milking-Verlängerung bereits aktiv ist.
+Falls Milking bereits gewährt wurde → AI wechselt automatisch in die finale Phase ohne zu fragen.
+Der Nutzer wird aber darüber informiert, dass jetzt das Finale folgt.
+
+---
+
+## 3. AI-initiierte Fragen
+
+### 3.1 Bei Erreichen der 75%-Marke (minDuration)
+```
+Frage stellen? (Difficulty-basiert)
+├── Ja:
+│   └── "Du hast es fast geschafft, hältst du noch durch?"
+│       ├── Antwort = "Ja" / "Ich kann noch" → Weiter bis targetEndTime
+│       ├── Antwort = "Nein" → Ermutigen + weiter machen → "Dann sag Bescheid, wenn du nicht mehr kannst"
+│       └── Timeout → Automatisch "Ja" annehmen
+└── Nein (sehr hohe Difficulty):
+└── Keine Frage
+```
+
+### 3.2 Am Ende der Session (targetEndTime)
+```
+"Bist du bereit für das Ende oder möchtest du noch etwas länger machen?"
+├── "Ja" → Finale Phase
+├── "Länger" → Verlängerung (siehe 2.4)
+└── Timeout → Automatisch "Ja" annehmen
 ```
 
 ---
 
-## 8. User bricht aktiv ab
+## 4. Zusammenfassung der AI-Antwort-Stile (Persona-abhängig)
 
-```
-User: "stop" / "ich will nicht mehr" / "genug"
-→ AI reagiert je nach Persona:
-├── Süß → "Gut, dann ist es für heute genug..."
-├── Dominant → "Du gibst so schnell auf?"
-└── Verständnisvoll → "Okay, dann ruhen wir uns aus..."
-→ Phase = ENDED
-```
+| Persona-Typ | "close" vor 75%     | "close" nach 75%     | "orgasm" zu früh     | "orgasm" nach "close" |
+|-------------|---------------------|----------------------|----------------------|-----------------------|
+| **Süß**     | Verständnisvoll     | Ermutigend           | Leicht enttäuscht    | Positiv + belohnend   |
+| **Dominant**| Streng              | Aufforderung         | Streng               | Erlaubt + dominant    |
+| **Teasing** | Spöttisch           | "Du schaffst das"    | Spöttisch            | Teasing + belohnend   |
 
 ---
 
-## Zusammenfassung der AI-Antwort-Stile (Persona-abhängig)
-
-| Persona-Typ | "close" vor minDuration | "close" nach minDuration | "orgasm" zu früh | "orgasm" nach "close" |
-|-------------|--------------------------|---------------------------|------------------|-----------------------|
-| **Süß**     | Verständnisvoll + Pause  | Ermutigend                | Leicht enttäuscht| Positiv + belohnend   |
-| **Dominant** | Streng + Pause           | Aufforderung durchzuhalten| Streng           | Erlaubt + dominant    |
-| **Teasing** | Spöttisch + Pause        | "Du schaffst das schon"   | Spöttisch        | Teasing + belohnend   |
-
----
-
-*Stand: 15. Mai 2026 – Grundlage für die finale Implementierung*
+*Dieses Diagramm ist die finale und verbindliche Grundlage für die Implementierung.*
