@@ -1,6 +1,7 @@
 import { IModeModule, ModeType } from './IModeModule';
 import { container } from 'tsyringe';
 import { ModeConfigService } from '../services/ModeConfigService';
+import { AIQuestionService } from '../services/AIQuestionService';
 
 export class StopAndGoModule implements IModeModule {
   readonly name = 'Stop & Go';
@@ -18,6 +19,7 @@ export class StopAndGoModule implements IModeModule {
 
   private configService = container.resolve(ModeConfigService);
   private config = this.configService.getStopGoConfig();
+  private questionService = container.resolve(AIQuestionService);
 
   onStart(): void {
     this.phase = 'go';
@@ -72,8 +74,18 @@ export class StopAndGoModule implements IModeModule {
     // AI-Frage bei MinDuration (75% Intensität)
     if (!this.hasAskedAtMinDuration && elapsed >= this.minDuration && this.phase !== 'milking') {
       this.hasAskedAtMinDuration = true;
-      console.log('[StopAndGo] AI should ask: "How are you holding up?" (75% intensity reached)');
-      // Später: Event an ModeManager / AI senden
+
+      // Entscheidung basierend auf Difficulty (später von Persona kommen)
+      const difficulty = 50; // Placeholder
+      const shouldAsk = this.questionService.shouldAskQuestion('holding_up', difficulty);
+
+      if (shouldAsk) {
+        const prompt = this.questionService.getPrompt('holding_up');
+        console.log(`[StopAndGo] AI asks: "${prompt}"`);
+        // Später: Event an ModeManager senden + auf Antwort warten mit Timeout
+      } else {
+        console.log('[StopAndGo] AI decided not to ask (high difficulty)');
+      }
     }
   }
 
