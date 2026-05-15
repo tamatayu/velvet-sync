@@ -38,7 +38,7 @@ export class StopAndGoModule implements IModeModule {
     const now = Date.now();
     const elapsed = (now - this.phaseStartTime) / 1000;
 
-    // Dynamische Intensitätssteigerung
+    // Dynamische Intensitätssteuerung
     const minDurationPoint = this.minDuration;
     const targetEnd = this.targetEndTime;
 
@@ -103,14 +103,15 @@ export class StopAndGoModule implements IModeModule {
     const elapsed = (Date.now() - this.phaseStartTime) / 1000;
 
     if (elapsed < this.minDuration) {
-      // Vor der MinDuration-Marke → streng behandeln
-      console.log('[StopAndGo] Early close signal before min duration');
-      // TODO: Je nach Persona → Pause geben oder streng bleiben
+      // Vor der MinDuration-Marke → streng behandeln (später Persona-abhängig)
+      console.log('[StopAndGo] Early close before min duration → giving pause + reducing intensity');
+      this.intensityLevel = Math.max(10, this.intensityLevel - this.config.intensityDropOnPause);
       this.switchToStop();
+      // TODO: Später Persona-basiert entscheiden (Pause vs. strict vs. ruin)
     } else if (elapsed < this.targetEndTime) {
       // Zwischen MinDuration und Zielende
       if (this.hasAskedAtMinDuration) {
-        console.log('[StopAndGo] Close signal after question → OK (continue)');
+        console.log('[StopAndGo] Close signal after AI asked → continue (less strict)');
       } else {
         console.log('[StopAndGo] Close signal without prior question → slightly strict');
         this.switchToStop();
@@ -128,8 +129,11 @@ export class StopAndGoModule implements IModeModule {
     this.milkingStartTime = Date.now();
     this.firstOrgasmTime = 0;
 
-    console.log('[StopAndGo] Milking accepted! Extra time required.');
-    return { accepted: true, extraTime: Math.floor(this.config.extensionBaseDuration * 0.2) };
+    // Bei Verlängerung Intensität auf 75% zurücksetzen
+    this.intensityLevel = this.config.intensityAfterExtension;
+
+    console.log('[StopAndGo] Extension accepted! Intensity reset to 75%.');
+    return { accepted: true, extraTime: this.config.extensionBaseDuration + (Math.random() * this.config.extensionVariance) };
   }
 
   private switchToGo() {
