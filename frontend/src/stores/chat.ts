@@ -20,8 +20,8 @@ export const useChatStore = defineStore('chat', {
   actions: {
     connect(sessionId: string) {
       // Guard: Nur einmal pro Session verbinden
-      if (this.socket && this.isConnected) {
-        if (DEBUG_SOCKET) console.log('[Socket] Already connected, skipping')
+      if (this.socket) {
+        if (DEBUG_SOCKET) console.log('[Socket] Socket already exists, skipping')
         return
       }
 
