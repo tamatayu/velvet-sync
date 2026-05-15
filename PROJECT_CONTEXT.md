@@ -43,5 +43,19 @@ VelvetSync ist eine **modulare Erotik-AI-Plattform** mit The-Handy-Integration. 
 - `frontend/src/stores/chat.ts` (Socket-Logik)
 - `backend/src/infrastructure/server.ts` (Socket.io Server)
 
+### Wichtige Design-Entscheidungen
+
+- **Modulare Modi**: Jeder Modus ist ein eigenständiges Modul mit einheitlichem Interface
+- **AI-Kontrolle**: In Edging-ähnlichen Modi hat die AI volle Kontrolle (User kann nicht übernehmen)
+
+**Zentrale AI-Regel (neu – Stand 15. Mai 2026):**
+> Die **AI Persona muss immer** auf Nutzereingaben reagieren — egal ob:
+> - Normale Chat-Nachricht
+> - Shortcut-Signal ("close", "orgasm", "milking", etc.)
+> - Antwort auf eine AI-Frage (auch bei Timeout)
+> - Wechsel in eine andere Phase oder einen anderen Modus (z. B. Verlängerung, Finale Phase)
+>
+> **Ausnahme:** Nur interne, automatisch wiederholte Phasenwechsel des Modus selbst (z. B. ständiger Wechsel zwischen GO ↔ STOP im StopAndGoModule).
+
 ---
 *Stand: 15. Mai 2026 – Wird bei jedem neuen Chat mitgegeben*
