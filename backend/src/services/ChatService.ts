@@ -1,111 +1,130 @@
-import { inject, injectable }                      from 'tsyringe';
-import { LLMService }                              from './LLMService';
-import { PersonaService }                          from './PersonaService';
-import { MemoryService }                           from './MemoryService';
+import { inject, injectable } from 'tsyringe';
+
 import { ChatMessage, ChatResponse, IChatService } from '../core/interfaces';
+import { ConfigurationService }                    from './ConfigurationService';
+import { LLMService }                              from './LLMService';
+
+/**
+ * ToDo :: Langzeit-Memory
+ *         Memory-Consolidation
+ *         Modi
+ *         Intent-Erkennung
+ *         komplexe Persona-Memory-Updates
+ */
 
 interface SessionData {
     messages: ChatMessage[];
     lastActivity: Date;
-    personaId: string;
-    structuredMemory?: any;
-    userSettings?: any;
-    pendingModeStart?: string;
 }
 
 @injectable()
 export class ChatService implements IChatService {
-    private sessions = new Map<string, SessionData>();
+    private readonly sessions = new Map<string, SessionData>();
 
     constructor(
         @inject( LLMService )
-        private llmService: LLMService,
-        @inject( PersonaService )
-        private personaService: PersonaService,
-        @inject( MemoryService )
-        private memoryService: MemoryService,
+        private readonly llmService: LLMService,
+        @inject( ConfigurationService )
+        private readonly configurationService: ConfigurationService,
     ) {}
 
-    async sendUserMessage( sessionId: string, content: string ): Promise<ChatResponse> {
+    /**
+     * Sends a user message to the active LLM persona and stores the conversation in memory.
+     */
+    public async sendUserMessage(
+        sessionId: string,
+        content: string,
+    ): Promise<ChatResponse> {
+        const activeProfile = this.configurationService.profile;
 
-        // Get or create session
-        const session = this.sessions.get( sessionId );
-        if (!session) {
-            throw new Error( 'Session not found' );
+        if ( !activeProfile ) {
+            throw new Error( 'No active profile configured for this server session.' );
         }
 
-        // Add user message
-        const userMsg: ChatMessage = {
-            id        : Date.now().toString(),
+        const session = this.getOrCreateSession( sessionId );
+
+        const userMessage: ChatMessage = {
+            id        : this.createMessageId(),
             role      : 'user',
             content,
-            timestamp : new Date()
+            timestamp : new Date(),
         };
-        session.messages.push( userMsg );
+
+        session.messages.push( userMessage );
         session.lastActivity = new Date();
 
-        // 1. Short-term: Last 10 messages (full detail)
-        const lastMessages = session.messages.slice( -10 ).map( m => ( {
-            role    : m.role === 'user' ? 'user' : 'assistant',
-            content : m.content
-        } ) );
-
-        // 2. Structured Memory (Likes / Dislikes / KeyMemories)
-        const recentForProfile   = session.messages.slice( -15 );
-        const structuredMemory   = await this.llmService.consolidateMemoryProfile(
-            recentForProfile,
-            session.structuredMemory || {}
-        );
-        session.structuredMemory = structuredMemory; // cache it
-
-        // 3. Long-term: Compressed older sessions (max 2)
-        const oldSessionSummaries = this.memoryService.getRelevantMemories( sessionId, 2 );
-
-        // Build final memory context for the prompt
-        let memoryBlock = '';
-        if ( structuredMemory && ( structuredMemory.likes?.length || structuredMemory.keyMemories?.length ) ) {
-            memoryBlock += `### ABOUT THE USER (structured memory):\n`;
-            if ( structuredMemory.likes?.length ) memoryBlock += `Likes: ${ structuredMemory.likes.join( ', ' ) }\n`;
-            if ( structuredMemory.dislikes?.length ) memoryBlock += `Dislikes: ${ structuredMemory.dislikes.join( ', ' ) }\n`;
-            if ( structuredMemory.keyMemories?.length ) memoryBlock += `Key memories: ${ structuredMemory.keyMemories.join( ' | ' ) }\n`;
-        }
-        if ( oldSessionSummaries ) {
-            memoryBlock += `\n### OLDER SESSIONS (compressed):\n${ oldSessionSummaries }`;
-        }
-
-        // Generate AI response
-        const persona = this.personaService.getPersonaById( session.personaId );
-
-        // Load user settings
-        const userSettings = session.userSettings || JSON.parse( localStorage.getItem( 'velvet-settings' ) || '{}' );
+        const conversationHistory = session.messages
+            .slice( -10 )
+            .map( message => {
+                return {
+                    role    : message.role === 'user' ? 'user' : 'assistant',
+                    content : message.content,
+                };
+            } );
 
         const aiResponseText = await this.llmService.generateResponse(
             sessionId,
             content,
-            persona,
-            lastMessages,
-            memoryBlock,
-            userSettings.gender,
-            userSettings.name
+            activeProfile.personaConfig,
+            conversationHistory,
+            '',
+            undefined,
+            activeProfile.userConfig.userName,
         );
 
-        const assistantMsg: ChatMessage = {
-            id        : ( Date.now() + 1 ).toString(),
+        const assistantMessage: ChatMessage = {
+            id        : this.createMessageId(),
             role      : 'assistant',
             content   : aiResponseText,
-            timestamp : new Date()
+            timestamp : new Date(),
         };
-        session.messages.push( assistantMsg );
 
-        return { message : assistantMsg };
+        session.messages.push( assistantMessage );
+        session.lastActivity = new Date();
+
+        return {
+            message : assistantMessage,
+        };
     }
 
-    async getHistory( sessionId: string ): Promise<ChatMessage[]> {
-        return this.sessions.get( sessionId )?.messages || [];
+    /**
+     * Returns the message history for a session.
+     */
+    public async getHistory( sessionId: string ): Promise<ChatMessage[]> {
+        return this.sessions.get( sessionId )?.messages ?? [];
     }
 
-    clearSession( sessionId: string ): Promise<void> {
+    /**
+     * Clears all messages and metadata for a session.
+     */
+    public async clearSession( sessionId: string ): Promise<void> {
         this.sessions.delete( sessionId );
-        return Promise.resolve();
+    }
+
+    /**
+     * Returns an existing session or creates a new empty session.
+     */
+    private getOrCreateSession( sessionId: string ): SessionData {
+        const existingSession = this.sessions.get( sessionId );
+
+        if ( existingSession ) {
+            return existingSession;
+        }
+
+        const newSession: SessionData = {
+            messages     : [],
+            lastActivity : new Date(),
+        };
+
+        this.sessions.set( sessionId, newSession );
+
+        return newSession;
+    }
+
+    /**
+     * Creates a simple unique message id.
+     */
+    private createMessageId(): string {
+        return `${ Date.now() }-${ Math.random().toString( 36 ).slice( 2 ) }`;
     }
 }
