@@ -5,9 +5,6 @@ export async function registerServices() {
     container.register('IChatService', { useClass: (await import('../services/ChatService')).ChatService });
     container.register('PersonaService', { useClass: (await import('../services/PersonaService')).PersonaService });
     container.register('MemoryService', { useClass: (await import('../services/MemoryService')).MemoryService });
-    container.register('ProfileService', { useClass: (await import('../services/ProfileService')).ProfileService });
-    container.register('ModeManager', { useClass: (await import('../services/ModeManager')).ModeManager });
-    container.register('IntentClassifier', { useClass: (await import('../services/IntentClassifier')).IntentClassifier });
-    container.register('ModeConfigService', { useClass: (await import('../services/ModeConfigService')).ModeConfigService });
+    container.register('ConfigurationService', { useClass: (await import('../services/ConfigurationService')).ConfigurationService });
 }
 

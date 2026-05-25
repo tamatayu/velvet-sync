@@ -5,10 +5,10 @@ import { FullProfile, ProfileSummary }                      from '../types/confi
 import { AppConfig, GlobalConfig, HandyConfig, UserConfig } from '../types/config.types';
 import { PersonaConfig, PersonaMemory, PersonaSummary }     from '../types/config.types';
 import * as Schema                                          from '../types/schema';
+import { injectable } from 'tsyringe';
 
+@injectable()
 export class ConfigurationService {
-    private static instance: ConfigurationService;
-
     private readonly __dataDir__: string;
     private readonly __configPath__: string;
 
@@ -18,7 +18,7 @@ export class ConfigurationService {
 
     private activeProfile: FullProfile | null = null;
 
-    private constructor() {
+    constructor() {
         this.__dataDir__ = path.join( __dirname, '../../data' );
         this.__configPath__ = path.join( this.__dataDir__, 'configuration.json' );
 
@@ -27,13 +27,6 @@ export class ConfigurationService {
         this._globalConfig = this.loadGlobalConfig();
         this._availablePersonas = this.loadAvailablePersonas();
         this._availableProfiles = this.loadAvailableProfiles();
-    }
-
-    public static getInstance(): ConfigurationService {
-        if ( !ConfigurationService.instance ) {
-            ConfigurationService.instance = new ConfigurationService();
-        }
-        return ConfigurationService.instance;
     }
 
     private loadGlobalConfig(): GlobalConfig {
