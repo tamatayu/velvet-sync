@@ -1,39 +1,39 @@
-import { Router } from 'express';
+import { Router }    from 'express';
 import { container } from 'tsyringe';
-import { PersonaService } from '../services';
+
+import { ConfigurationService } from '../services';
 
 const router = Router();
-const personaService = container.resolve(PersonaService);
+const configurationService = container.resolve( ConfigurationService );
 
-router.get('/', (req, res) => {
-  res.json(personaService.getAllPersonas());
-});
+/**
+ * Returns all available persona summaries for the startup configuration dialog.
+ */
+router.get( '/', ( req, res ) => {
+    res.json( {
+        personas : configurationService.getAvailablePersonas(),
+    } );
+} );
 
-router.get('/:id', (req, res) => {
-  const persona = personaService.getPersonaById(req.params.id);
-  if (!persona) return res.status(404).json({ error: 'Persona not found' });
-  res.json(persona);
-});
+/**
+ * Returns a single persona summary by id.
+ */
+router.get( '/:id', ( req, res ) => {
+    const persona = configurationService
+        .getAvailablePersonas()
+        .find( availablePersona => {
+            return availablePersona.id === req.params.id;
+        } );
 
-router.post('/', (req, res) => {
-  try {
-    const persona = personaService.createPersona(req.body);
-    res.status(201).json(persona);
-  } catch (e) {
-    res.status(400).json({ error: 'Invalid persona data' });
-  }
-});
+    if ( !persona ) {
+        return res.status( 404 ).json( {
+            error : 'Persona not found',
+        } );
+    }
 
-router.put('/:id', (req, res) => {
-  const updated = personaService.updatePersona(req.params.id, req.body);
-  if (!updated) return res.status(404).json({ error: 'Persona not found' });
-  res.json(updated);
-});
-
-router.delete('/:id', (req, res) => {
-  const success = personaService.deletePersona(req.params.id);
-  if (!success) return res.status(404).json({ error: 'Persona not found' });
-  res.json({ success: true });
-});
+    res.json( {
+        persona,
+    } );
+} );
 
 export default router;
