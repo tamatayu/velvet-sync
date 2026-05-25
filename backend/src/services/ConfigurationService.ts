@@ -202,7 +202,11 @@ export class ConfigurationService {
         fs.writeFileSync( path.join( profileDir, 'personaMemory.json' ), JSON.stringify( this.activeProfile.personaMemory, null, 2 ) );
     }
 
-    public updateProfile( profile: ProfileSummary ): boolean {
+    public updateProfile( profileName: string, profile: Omit<ProfileSummary, 'profileName'> ): boolean {
+        return true;
+    }
+
+    public deleteProfile( profileName: string ): boolean {
         return true;
     }
 
