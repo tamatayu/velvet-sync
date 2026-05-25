@@ -4,6 +4,7 @@ import { z }                                                from 'zod';
 import { FullProfile, ProfileSummary }                      from '../types/config.types';
 import { AppConfig, GlobalConfig, HandyConfig, UserConfig } from '../types/config.types';
 import { PersonaConfig, PersonaMemory, PersonaSummary }     from '../types/config.types';
+import { CreateProfile }                                    from '../types/config.types';
 import * as Schema                                          from '../types/schema';
 import { injectable }                                       from 'tsyringe';
 
@@ -31,7 +32,7 @@ export class ConfigurationService {
 
     private loadGlobalConfig(): GlobalConfig {
         const raw = fs.readFileSync( this.__configPath__, 'utf-8' );
-        return <GlobalConfig> JSON.parse( raw );
+        return Schema.GlobalConfigSchema.parse( JSON.parse( raw ) );
     }
 
     private loadAvailablePersonas(): PersonaConfig[] {
@@ -307,7 +308,7 @@ export class ConfigurationService {
         return true;
     }
 
-    public createProfile( profile: ProfileSummary ): ProfileSummary {
+    public createProfile( profile: CreateProfile ): ProfileSummary {
         const profileName = profile.profileName.trim();
 
         if ( !profileName ) {
@@ -331,8 +332,8 @@ export class ConfigurationService {
         const newProfile: FullProfile = {
             profileName,
             appConfig     : {
-                createdAt : profile.createdAt || now,
-                lastUsed  : profile.lastUsed || now,
+                createdAt : now,
+                lastUsed  : now,
             },
             userConfig    : {
                 userName : profile.userName.trim(),

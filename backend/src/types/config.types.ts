@@ -6,6 +6,12 @@ export interface ProfileSummary {
     createdAt: string;
 }
 
+export interface CreateProfile {
+    profileName: string;
+    userName: string;
+    persona: string;
+}
+
 export interface FullProfile {
     profileName: string;
     appConfig: AppConfig;

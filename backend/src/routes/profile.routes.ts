@@ -1,6 +1,6 @@
-import { Router }    from 'express';
-import { container } from 'tsyringe';
-
+import { Router }               from 'express';
+import { container }            from 'tsyringe';
+import * as Schema              from '../types/schema';
 import { ConfigurationService } from '../services';
 
 const router = Router();
@@ -18,7 +18,8 @@ router.get( '/', ( req, res ) => {
 
 router.post( '/', ( req, res ) => {
     try {
-        const profile = configurationService.createProfile( req.body );
+        const payload = Schema.CreateProfileSchema.parse( req.body );
+        const profile = configurationService.createProfile( payload );
 
         res.status( 201 ).json( {
             profile,
@@ -94,7 +95,8 @@ router.post( '/:profileName/activate', ( req, res ) => {
 
 router.put( '/:id', ( req, res ) => {
     try {
-        const profile = configurationService.updateProfile( req.params.id, req.body );
+        const payload = Schema.UpdateProfileSchema.parse( req.body );
+        const profile = configurationService.updateProfile( req.params.id, payload );
 
         if ( !profile ) {
             return res.status( 404 ).json( {
