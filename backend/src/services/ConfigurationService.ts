@@ -182,6 +182,7 @@ export class ConfigurationService {
         const success = this.loadProfile( profileName );
 
         if ( success ) {
+            this._globalConfig.activeProfile = profileName;
             this.activeProfile!.appConfig.lastUsed = new Date().toISOString();
 
             this.saveGlobalConfig();
