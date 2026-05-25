@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia';
 import { io, Socket }  from 'socket.io-client';
 
-import { DEBUG_SOCKET }     from '@/config';
-import { VITE_BACKEND_URL } from '@/config';
+import { DEBUG_SOCKET, VITE_BACKEND_URL } from '@/config';
 
 export interface Message {
     id: string;
@@ -37,10 +36,22 @@ export const useChatStore = defineStore( 'chat', {
          */
         connect( sessionId: string ): void {
             if ( this.socket ) {
-                if ( DEBUG_SOCKET ) {
-                    console.log( '[Socket] Socket already exists, skipping' );
+                this.sessionId = sessionId;
+
+                if ( this.isConnected ) {
+                    if ( DEBUG_SOCKET ) {
+                        console.log( '[Socket] Socket already connected, joining session:', sessionId );
+                    }
+
+                    this.socket.emit( 'join-session', sessionId );
+                    return;
                 }
 
+                if ( DEBUG_SOCKET ) {
+                    console.log( '[Socket] Socket already exists, reconnecting' );
+                }
+
+                this.socket.connect();
                 return;
             }
 
@@ -84,6 +95,8 @@ export const useChatStore = defineStore( 'chat', {
             } );
 
             this.socket.on( 'session-joined', data => {
+                this.error = '';
+
                 if ( DEBUG_SOCKET ) {
                     console.log( '[Socket] Session joined:', data );
                 }
@@ -91,6 +104,7 @@ export const useChatStore = defineStore( 'chat', {
 
             this.socket.on( 'disconnect', reason => {
                 this.isConnected = false;
+                this.isWaitingForResponse = false;
 
                 if ( DEBUG_SOCKET ) {
                     console.log( '[Socket] Disconnected:', reason );
@@ -101,6 +115,7 @@ export const useChatStore = defineStore( 'chat', {
 
             this.socket.on( 'connect_error', error => {
                 this.isConnected = false;
+                this.isWaitingForResponse = false;
                 this.error = error.message;
 
                 if ( DEBUG_SOCKET ) {
@@ -138,6 +153,10 @@ export const useChatStore = defineStore( 'chat', {
             const trimmedContent = content.trim();
 
             if ( !trimmedContent ) {
+                return;
+            }
+
+            if ( this.isWaitingForResponse ) {
                 return;
             }
 
@@ -186,6 +205,7 @@ export const useChatStore = defineStore( 'chat', {
             this.isConnected = false;
             this.isWaitingForResponse = false;
             this.sessionId = '';
+            this.error = '';
         }
     }
 } );

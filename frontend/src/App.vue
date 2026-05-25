@@ -1,26 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chat'
-import { useSessionStore } from '@/stores/session'
+import { useConfigurationStore } from '@/stores/configuration'
 import PersonaSelector from '@/components/PersonaSelector.vue'
 import SessionControls from '@/components/SessionControls.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import ProfileDialog from '@/components/ProfileDialog.vue'
 
 const chatStore = useChatStore()
-const sessionStore = useSessionStore()
+const configurationStore = useConfigurationStore()
 
 const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
-const showSettings = ref(false)
+const showSettings = ref(true)
 const showProfile = ref(false)
+const isInitializing = ref(true)
 
 const sendMessage = async () => {
   if (!messageInput.value.trim()) return
-  
+
   await chatStore.sendMessage(messageInput.value.trim())
   messageInput.value = ''
-  
+
   // Auto-scroll
   await nextTick()
   if (messagesContainer.value) {
@@ -28,10 +29,40 @@ const sendMessage = async () => {
   }
 }
 
-// Socket connection is now handled centrally in main.ts
+onMounted(async () => {
+  await configurationStore.loadStartupConfiguration()
+
+  showSettings.value = !configurationStore.isConfigured
+  isInitializing.value = false
+})
+
+const activateChatSession = () => {
+  if (!configurationStore.isConfigured || chatStore.isConnected) return
+
+  chatStore.connect(getOrCreateSessionId())
+}
+
+const getOrCreateSessionId = (): string => {
+  const storageKey = 'velvet-sync-session-id'
+  const existingSessionId = localStorage.getItem(storageKey)
+
+  if (existingSessionId) return existingSessionId
+
+  const sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  localStorage.setItem(storageKey, sessionId)
+
+  return sessionId
+}
 
 const closeSettings = () => {
+  if (!configurationStore.isConfigured) {
+    showSettings.value = true
+    return
+  }
+
   showSettings.value = false
+  activateChatSession()
 }
 </script>
 
@@ -45,14 +76,14 @@ const closeSettings = () => {
         <span :class="{ connected: chatStore.isConnected }">
           {{ chatStore.isConnected ? '● Verbunden' : '○ Getrennt' }}
         </span>
-        <span class="session">Session: {{ sessionStore.sessionId }}</span>
+        <span class="session">Session: {{ chatStore.sessionId || 'nicht gestartet' }}</span>
       </div>
     </header>
 
     <div class="chat-container">
       <div ref="messagesContainer" class="messages">
-        <div 
-          v-for="msg in chatStore.messages" 
+        <div
+          v-for="msg in chatStore.messages"
           :key="msg.id"
           :class="['message', msg.role]"
         >
@@ -62,19 +93,19 @@ const closeSettings = () => {
       </div>
 
       <div class="input-area">
-        <input 
+        <input
           v-model="messageInput"
           @keyup.enter="sendMessage"
           placeholder="Schreibe eine Nachricht..."
-          :disabled="!chatStore.isConnected"
+          :disabled="!configurationStore.isConfigured || !chatStore.isConnected || chatStore.isWaitingForResponse"
         />
-        <button @click="sendMessage" :disabled="!messageInput.trim() || !chatStore.isConnected">
+        <button @click="sendMessage" :disabled="!messageInput.trim() || !configurationStore.isConfigured || !chatStore.isConnected || chatStore.isWaitingForResponse">
           Senden
         </button>
       </div>
     </div>
 
-    <SettingsDialog v-if="showSettings" @close="closeSettings" />
+    <SettingsDialog v-if="showSettings && !isInitializing" @close="closeSettings" />
     <ProfileDialog v-if="showProfile" @close="showProfile = false" />
   </div>
 </template>
