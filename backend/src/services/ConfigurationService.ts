@@ -5,7 +5,7 @@ import { FullProfile, ProfileSummary }                      from '../types/confi
 import { AppConfig, GlobalConfig, HandyConfig, UserConfig } from '../types/config.types';
 import { PersonaConfig, PersonaMemory, PersonaSummary }     from '../types/config.types';
 import * as Schema                                          from '../types/schema';
-import { injectable } from 'tsyringe';
+import { injectable }                                       from 'tsyringe';
 
 @injectable()
 export class ConfigurationService {
@@ -134,10 +134,11 @@ export class ConfigurationService {
         fs.writeFileSync( this.__configPath__, JSON.stringify( defaultConfig, null, 2 ) );
     }
 
-    private updateGlobalLastActive( profileName: string ) {
-        const config = JSON.parse( fs.readFileSync( this.__configPath__, 'utf-8' ) );
-        config.activeProfile = profileName;
-        fs.writeFileSync( this.__configPath__, JSON.stringify( config, null, 2 ) );
+    private saveGlobalConfig(): void {
+        fs.writeFileSync(
+            this.__configPath__,
+            JSON.stringify( this._globalConfig, null, 2 )
+        );
     }
 
     private loadProfile( profileName: string ): boolean {
@@ -158,7 +159,13 @@ export class ConfigurationService {
 
     public getAvailableProfiles(): ProfileSummary[] {
         return this._availableProfiles.map( profile => {
-            return {};
+            return {
+                profileName : profile.profileName,
+                userName    : profile.userConfig.userName,
+                persona     : profile.userConfig.persona,
+                lastUsed    : profile.appConfig.lastUsed,
+                createdAt   : profile.appConfig.createdAt,
+            };
         } );
     }
 
@@ -171,11 +178,17 @@ export class ConfigurationService {
         } );
     }
 
-    public activateProfile( profileName: string ): void {
+    public activateProfile( profileName: string ): boolean {
         const success = this.loadProfile( profileName );
+
         if ( success ) {
-            this.updateGlobalLastActive( profileName );
+            this.activeProfile!.appConfig.lastUsed = new Date().toISOString();
+
+            this.saveGlobalConfig();
+            this.saveActiveProfile();
         }
+
+        return success;
     }
 
     public saveActiveProfile(): void {
