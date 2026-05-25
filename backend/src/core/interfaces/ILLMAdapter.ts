@@ -7,5 +7,6 @@ export type LLMOptions = {
     temperature?: number;
     maxTokens?: number;
     systemPrompt?: string;
+    stream?: boolean;
     context?: string;           // vorherige Nachrichten als String
 };

@@ -1,6 +1,8 @@
 import { injectable } from 'tsyringe';
 import axios from 'axios';
-import { ILLMAdapter, LLMOptions } from '../core/interfaces/ILLMAdapter';
+import { ILLMAdapter, LLMOptions } from '../core/interfaces';
+import { ollamaConfig } from '../config/ollama.config';
+import { logger } from '../infrastructure/server';
 
 @injectable()
 export class OllamaAdapter implements ILLMAdapter {
@@ -8,18 +10,18 @@ export class OllamaAdapter implements ILLMAdapter {
     private readonly defaultModel: string;
 
     constructor() {
-        this.baseUrl = process.env.OLLAMA_HOST || 'http://localhost:11434';
-        this.defaultModel = 'llama3.1:8b-instruct-q4_K_M'; // oder was du bevorzugst
+        this.baseUrl = ollamaConfig.ollamaHost;
+        this.defaultModel = ollamaConfig.defaultModel;
     }
 
     async sendMessage(prompt: string, options: LLMOptions = {}): Promise<string> {
         const payload = {
             model: this.defaultModel,
             prompt,
-            stream: false,
+            stream: options.stream ?? ollamaConfig.fallback.stream,
             options: {
-                temperature: options.temperature ?? 0.85,
-                num_predict: options.maxTokens ?? 1024,
+                temperature: options.temperature ?? ollamaConfig.fallback.temperature,
+                num_predict: options.maxTokens ?? ollamaConfig.fallback.maxTokens,
             },
             system: options.systemPrompt,
         };
@@ -28,7 +30,7 @@ export class OllamaAdapter implements ILLMAdapter {
             const response = await axios.post(`${this.baseUrl}/api/generate`, payload);
             return response.data.response.trim();
         } catch (error: any) {
-            console.error('[Ollama Error]', error?.response?.data || error.message);
+            logger.error(error, '[Ollama Error]', error?.response?.data || error.message);
             throw new Error('LLM-Anfrage fehlgeschlagen');
         }
     }
@@ -36,7 +38,7 @@ export class OllamaAdapter implements ILLMAdapter {
     async getModelInfo() {
         return {
             model: this.defaultModel,
-            contextWindow: 8192, // für llama3.1:8b
+            contextWindow: ollamaConfig.contextWindow,
         };
     }
 }

@@ -96,7 +96,7 @@ export class LLMService {
     ].join('\n');
 
     try {
-      const result = await this.talkToLLM<any>([{ role: 'system', content: prompt }], 0.0);
+      const result = await this.talkToLLM([{ role: 'system', content: prompt }], 0.0);
       return {
         name: result?.name ?? currentProfile?.name ?? '',
         likes: result?.likes ?? currentProfile?.likes ?? [],
@@ -107,6 +107,8 @@ export class LLMService {
       return currentProfile || { name: '', likes: [], dislikes: [], keyMemories: [] };
     }
   }
+
+  private talkToLLM( a: any, b: any ): any { return {} }
 
   private buildSystemPrompt(persona: any, userGender?: string, userName?: string): string {
     const p = persona.fullPromptData || persona;

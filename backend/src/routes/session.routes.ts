@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { container } from 'tsyringe';
-import { ChatService } from '../services/ChatService';
+import { ChatService } from '../services';
 import { MemoryService } from '../services/MemoryService';
 
 const router = Router();

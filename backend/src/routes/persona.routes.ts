@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { container } from 'tsyringe';
-import { PersonaService } from '../services/PersonaService';
+import { PersonaService } from '../services';
 
 const router = Router();
 const personaService = container.resolve(PersonaService);
