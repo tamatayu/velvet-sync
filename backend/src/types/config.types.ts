@@ -1,7 +1,9 @@
 export interface ProfileSummary {
     profileName: string;
-    persona: string;
     userName: string;
+    persona: string;
+    lastUsed: string;
+    createdAt: string;
 }
 
 export interface FullProfile {
@@ -23,9 +25,7 @@ export interface UserConfig {
     persona: string;
 }
 
-export interface PersonaMemory {
-
-}
+export interface PersonaMemory {}
 
 export interface GlobalConfig {
     activeProfile: string;
@@ -48,4 +48,7 @@ export interface PersonaSummary {
     name: string;
 }
 
-type MinMax = { min: number; max: number };
+type MinMax = {
+    min: number;
+    max: number;
+};
