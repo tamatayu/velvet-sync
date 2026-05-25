@@ -1,49 +1,80 @@
-import { Router }               from 'express';
-import { container }            from 'tsyringe';
+import { Router }    from 'express';
+import { container } from 'tsyringe';
+
 import { ConfigurationService } from '../services';
 
 const router = Router();
 const configurationService = container.resolve( ConfigurationService );
 
+/**
+ * Returns all available profile summaries for the startup configuration dialog.
+ */
 router.get( '/', ( req, res ) => {
-    res.json( { profiles : configurationService.getAvailableProfiles() } );
+    res.json( {
+        profiles          : configurationService.getAvailableProfiles(),
+        latestProfileName : configurationService.getLatestProfileName(),
+    } );
 } );
 
+/**
+ * Returns the latest used profile name as startup suggestion.
+ */
+router.get( '/latest', ( req, res ) => {
+    res.json( {
+        profileName : configurationService.getLatestProfileName(),
+    } );
+} );
+
+/**
+ * Returns the profile that is active for the current backend session.
+ */
 router.get( '/current', ( req, res ) => {
-    if ( !configurationService.profile ) {
-        res.json( { profile : null } );
-    } else {
-        const available = configurationService.getAvailableProfiles();
-        const current = available.find( profile => profile.profileName === configurationService.profile!.profileName );
-        res.json( { profile : current ?? null } );
+    const activeProfile = configurationService.profile;
+
+    if ( !activeProfile ) {
+        return res.json( {
+            profile : null,
+        } );
     }
+
+    const profile = configurationService
+        .getAvailableProfiles()
+        .find( availableProfile => {
+            return availableProfile.profileName === activeProfile.profileName;
+        } );
+
+    res.json( {
+        profile : profile ?? null,
+    } );
 } );
 
-router.post( '/', ( req, res ) => {
-    try {
-        const profile = configurationService.createProfile( req.body );
-        res.status( 201 ).json( profile );
-    } catch ( e ) {
-        res.status( 400 ).json( { error : 'Failed to create profile' } );
+/**
+ * Activates a profile for the current backend session.
+ */
+router.post( '/:profileName/activate', ( req, res ) => {
+    const success = configurationService.activateProfile( req.params.profileName );
+
+    if ( !success ) {
+        return res.status( 404 ).json( {
+            error : 'Profile not found',
+        } );
     }
+
+    const activeProfile = configurationService.profile;
+
+    res.json( {
+        success : true,
+        profile : activeProfile
+            ? {
+                profileName : activeProfile.profileName,
+                userName    : activeProfile.userConfig.userName,
+                persona     : activeProfile.userConfig.persona,
+                lastUsed    : activeProfile.appConfig.lastUsed,
+                createdAt   : activeProfile.appConfig.createdAt,
+            }
+            : null,
+    } );
 } );
 
-router.put( '/:id', ( req, res ) => {
-    const updated = configurationService.updateProfile( req.params.id, req.body );
-    if ( !updated ) return res.status( 404 ).json( { error : 'Profile not found' } );
-    res.json( updated );
-} );
-
-router.delete( '/:id', ( req, res ) => {
-    const success = configurationService.deleteProfile( req.params.id );
-    if ( !success ) return res.status( 404 ).json( { error : 'Profile not found' } );
-    res.json( { success : true } );
-} );
-
-router.post( '/:id/switch', ( req, res ) => {
-    const profile = configurationService.activateProfile( req.params.id );
-    if ( !profile ) return res.status( 404 ).json( { error : 'Profile not found' } );
-    res.json( profile );
-} );
 
 export default router;
