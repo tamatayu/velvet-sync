@@ -1,12 +1,16 @@
 import fs                                                   from 'fs';
 import path                                                 from 'path';
 import { z }                                                from 'zod';
+import { fileURLToPath }                                    from 'url';
 import { FullProfile, ProfileSummary }                      from '../types/config.types';
 import { AppConfig, GlobalConfig, HandyConfig, UserConfig } from '../types/config.types';
 import { PersonaConfig, PersonaMemory, PersonaSummary }     from '../types/config.types';
 import { CreateProfile }                                    from '../types/config.types';
 import * as Schema                                          from '../types/schema';
 import { singleton }                                        from 'tsyringe';
+
+const __filename = fileURLToPath( import.meta.url );
+const __dirname = path.dirname( __filename );
 
 @singleton()
 export class ConfigurationService {

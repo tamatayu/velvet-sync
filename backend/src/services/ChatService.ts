@@ -1,8 +1,19 @@
-import { inject }                                  from 'tsyringe';
-import { singleton }                               from 'tsyringe';
-import { ChatMessage, ChatResponse, IChatService } from '../core/interfaces';
-import { ConfigurationService }                    from './ConfigurationService';
-import { LLMService }                              from './LLMService';
+import { inject }               from 'tsyringe';
+import { singleton }            from 'tsyringe';
+import { ConfigurationService } from './ConfigurationService';
+import { LLMService }           from './LLMService';
+
+export interface ChatMessage {
+    id: string;
+    role: 'user' | 'assistant' | 'system' | 'thought';
+    content: string;
+    timestamp: Date;
+}
+
+export interface ChatResponse {
+    message: ChatMessage;
+    thought?: string;
+}
 
 /**
  * ToDo :: Langzeit-Memory
@@ -18,7 +29,7 @@ interface SessionData {
 }
 
 @singleton()
-export class ChatService implements IChatService {
+export class ChatService {
     private readonly sessions = new Map<string, SessionData>();
 
     constructor(
