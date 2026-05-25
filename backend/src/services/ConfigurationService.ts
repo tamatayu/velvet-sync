@@ -151,6 +151,48 @@ export class ConfigurationService {
         return true;
     }
 
+    private getProfileDir( profileName: string ): string {
+        return path.join( this.__dataDir__, 'profile', profileName );
+    }
+
+    /**
+     * Checks if a persona exists by its configured name.
+     */
+    private personaExists( personaName: string ): boolean {
+        return this._availablePersonas.some( persona => {
+            return persona.name === personaName;
+        } );
+    }
+
+    /**
+     * Converts a full profile into the lightweight frontend summary.
+     */
+    private toProfileSummary( profile: FullProfile ): ProfileSummary {
+        return {
+            profileName : profile.profileName,
+            userName    : profile.userConfig.userName,
+            persona     : profile.userConfig.persona,
+            lastUsed    : profile.appConfig.lastUsed,
+            createdAt   : profile.appConfig.createdAt,
+        };
+    }
+
+    /**
+     * Persists all profile files to disk.
+     */
+    private saveProfile( profile: FullProfile ): void {
+        const profileDir = this.getProfileDir( profile.profileName );
+
+        if ( !fs.existsSync( profileDir ) ) {
+            fs.mkdirSync( profileDir, { recursive : true } );
+        }
+
+        fs.writeFileSync( path.join( profileDir, 'appConfig.json' ), JSON.stringify( profile.appConfig, null, 2 ) );
+        fs.writeFileSync( path.join( profileDir, 'userConfig.json' ), JSON.stringify( profile.userConfig, null, 2 ) );
+        fs.writeFileSync( path.join( profileDir, 'handyConfig.json' ), JSON.stringify( profile.handyConfig, null, 2 ) );
+        fs.writeFileSync( path.join( profileDir, 'personaMemory.json' ), JSON.stringify( profile.personaMemory, null, 2 ) );
+    }
+
     // ==================== PUBLIC API ====================
 
     public getLatestProfileName(): string {
@@ -194,24 +236,128 @@ export class ConfigurationService {
 
     public saveActiveProfile(): void {
         if ( !this.activeProfile ) return;
-        const profileDir = path.join( this.__dataDir__, 'profile', this.activeProfile.profileName );
 
-        fs.writeFileSync( path.join( profileDir, 'appConfig.json' ), JSON.stringify( this.activeProfile.appConfig, null, 2 ) );
-        fs.writeFileSync( path.join( profileDir, 'userConfig.json' ), JSON.stringify( this.activeProfile.userConfig, null, 2 ) );
-        fs.writeFileSync( path.join( profileDir, 'handyConfig.json' ), JSON.stringify( this.activeProfile.handyConfig, null, 2 ) );
-        fs.writeFileSync( path.join( profileDir, 'personaMemory.json' ), JSON.stringify( this.activeProfile.personaMemory, null, 2 ) );
+        this.saveProfile( this.activeProfile );
     }
 
-    public updateProfile( profileName: string, profile: Partial<ProfileSummary> ): boolean {
-        return true;
+    public updateProfile( profileName: string, profile: Partial<ProfileSummary> ): ProfileSummary | null {
+        const existingProfile = this._availableProfiles.find( availableProfile => {
+            return availableProfile.profileName === profileName;
+        } );
+
+        if ( !existingProfile ) {
+            return null;
+        }
+
+        if ( profile.persona !== undefined ) {
+            if ( !this.personaExists( profile.persona ) ) {
+                throw new Error( 'Persona not found.' );
+            }
+
+            const personaConfig = this._availablePersonas.find( persona => {
+                return persona.name === profile.persona;
+            } )!;
+
+            existingProfile.userConfig.persona = profile.persona;
+            existingProfile.personaConfig = personaConfig;
+        }
+
+        if ( profile.userName !== undefined ) {
+            existingProfile.userConfig.userName = profile.userName.trim();
+        }
+
+        this.saveProfile( existingProfile );
+
+        if ( this.activeProfile?.profileName === profileName ) {
+            this.activeProfile = existingProfile;
+        }
+
+        return this.toProfileSummary( existingProfile );
     }
 
     public deleteProfile( profileName: string ): boolean {
+        const existingProfileIndex = this._availableProfiles.findIndex( profile => {
+            return profile.profileName === profileName;
+        } );
+
+        if ( existingProfileIndex === -1 ) {
+            return false;
+        }
+
+        if ( this.activeProfile?.profileName === profileName ) {
+            throw new Error( 'Cannot delete active profile.' );
+        }
+
+        const profileDir = this.getProfileDir( profileName );
+
+        if ( fs.existsSync( profileDir ) ) {
+            fs.rmSync( profileDir, {
+                recursive : true,
+                force     : true,
+            } );
+        }
+
+        this._availableProfiles.splice( existingProfileIndex, 1 );
+
+        if ( this._globalConfig.activeProfile === profileName ) {
+            this._globalConfig.activeProfile = this._availableProfiles[0]?.profileName ?? '';
+            this.saveGlobalConfig();
+        }
+
         return true;
     }
 
-    public createProfile( profile: ProfileSummary ): boolean {
-        return true;
+    public createProfile( profile: ProfileSummary ): ProfileSummary {
+        const profileName = profile.profileName.trim();
+
+        if ( !profileName ) {
+            throw new Error( 'Profile name is required.' );
+        }
+
+        if ( this._availableProfiles.some( existingProfile => existingProfile.profileName === profileName ) ) {
+            throw new Error( 'Profile already exists.' );
+        }
+
+        if ( !this.personaExists( profile.persona ) ) {
+            throw new Error( 'Persona not found.' );
+        }
+
+        const personaConfig = this._availablePersonas.find( persona => {
+            return persona.name === profile.persona;
+        } )!;
+
+        const now = new Date().toISOString();
+
+        const newProfile: FullProfile = {
+            profileName,
+            appConfig     : {
+                createdAt : profile.createdAt || now,
+                lastUsed  : profile.lastUsed || now,
+            },
+            userConfig    : {
+                userName : profile.userName.trim(),
+                persona  : profile.persona,
+            },
+            handyConfig   : {
+                apiKey         : '',
+                depth          : {
+                    min : 0,
+                    max : 100
+                },
+                speed          : {
+                    min : 0,
+                    max : 100
+                },
+                speedOverwrite : 0,
+            },
+            personaConfig,
+            personaMemory : {},
+        };
+
+        this.saveProfile( newProfile );
+        this._availableProfiles.push( newProfile );
+
+        return this.toProfileSummary( newProfile );
     }
 
     // ==================== GETTER ====================

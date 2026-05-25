@@ -16,6 +16,22 @@ router.get( '/', ( req, res ) => {
     } );
 } );
 
+router.post( '/', ( req, res ) => {
+    try {
+        const profile = configurationService.createProfile( req.body );
+
+        res.status( 201 ).json( {
+            profile,
+        } );
+    } catch ( error ) {
+        res.status( 400 ).json( {
+            error : error instanceof Error
+                ? error.message
+                : 'Failed to create profile',
+        } );
+    }
+} );
+
 /**
  * Returns the latest used profile name as startup suggestion.
  */
@@ -74,6 +90,50 @@ router.post( '/:profileName/activate', ( req, res ) => {
             }
             : null,
     } );
+} );
+
+router.put( '/:id', ( req, res ) => {
+    try {
+        const profile = configurationService.updateProfile( req.params.id, req.body );
+
+        if ( !profile ) {
+            return res.status( 404 ).json( {
+                error : 'Profile not found',
+            } );
+        }
+
+        res.json( {
+            profile,
+        } );
+    } catch ( error ) {
+        res.status( 400 ).json( {
+            error : error instanceof Error
+                ? error.message
+                : 'Failed to update profile',
+        } );
+    }
+} );
+
+router.delete( '/:id', ( req, res ) => {
+    try {
+        const success = configurationService.deleteProfile( req.params.id );
+
+        if ( !success ) {
+            return res.status( 404 ).json( {
+                error : 'Profile not found',
+            } );
+        }
+
+        res.json( {
+            success : true,
+        } );
+    } catch ( error ) {
+        res.status( 400 ).json( {
+            error : error instanceof Error
+                ? error.message
+                : 'Failed to delete profile',
+        } );
+    }
 } );
 
 
