@@ -1,20 +1,11 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import App from './App.vue'
-import './style.css'
-import { useChatStore } from './stores/chat'
-import { useSessionStore } from './stores/session'
+import { createApp }   from 'vue';
+import { createPinia } from 'pinia';
 
-const app = createApp(App)
-const pinia = createPinia()
-app.use(pinia)
+import App from './App.vue';
+import './style.css';
 
-// Zentrale Socket-Verbindung (nur einmal!)
-const sessionStore = useSessionStore(pinia)
-const chatStore = useChatStore(pinia)
+const app = createApp( App );
+const pinia = createPinia();
 
-const sessionId = sessionStore.sessionId || 'demo-session'
-sessionStore.setSessionId(sessionId)
-chatStore.connect(sessionId)
-
-app.mount('#app')
+app.use( pinia );
+app.mount( '#app' );
