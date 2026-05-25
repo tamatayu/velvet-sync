@@ -98,7 +98,9 @@ export class ConfigurationService {
                 const personaMemoryRaw = fs.readFileSync( path.join( profileDir, 'personaMemory.json' ), 'utf-8' );
                 const personaMemory = Schema.PersonaMemorySchema.parse( JSON.parse( personaMemoryRaw ) );
 
-                const persona = this._availablePersonas.find( persona => persona.name === userConfig.persona );
+                const persona = this._availablePersonas.find( persona => {
+                    return persona.id === userConfig.persona;
+                } );
                 if ( !persona ) {
                     console.warn( `Invalid profile skipped: '${ folder }', persona '${ userConfig.persona }' not found!` );
                     continue;
@@ -163,9 +165,9 @@ export class ConfigurationService {
     /**
      * Checks if a persona exists by its configured name.
      */
-    private personaExists( personaName: string ): boolean {
+    private personaExists( personaId: string ): boolean {
         return this._availablePersonas.some( persona => {
-            return persona.name === personaName;
+            return persona.id === personaId;
         } );
     }
 
@@ -219,8 +221,9 @@ export class ConfigurationService {
     public getAvailablePersonas(): PersonaSummary[] {
         return this._availablePersonas.map( persona => {
             return {
-                id   : persona.id,
-                name : persona.name,
+                id          : persona.id,
+                name        : persona.name,
+                description : persona.description,
             };
         } );
     }
@@ -260,7 +263,7 @@ export class ConfigurationService {
             }
 
             const personaConfig = this._availablePersonas.find( persona => {
-                return persona.name === profile.persona;
+                return persona.id === profile.persona;
             } )!;
 
             existingProfile.userConfig.persona = profile.persona;
@@ -328,7 +331,7 @@ export class ConfigurationService {
         }
 
         const personaConfig = this._availablePersonas.find( persona => {
-            return persona.name === profile.persona;
+            return persona.id === profile.persona;
         } )!;
 
         const now = new Date().toISOString();

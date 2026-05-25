@@ -44,17 +44,34 @@ export interface HandyConfig {
     speedOverwrite: number;
 }
 
+type MinMax = {
+    min: number;
+    max: number;
+};
+
 export interface PersonaConfig {
     id: string;
     name: string;
+    description?: string;
+    systemPrompt: string;
+    responseFormat?: PersonaResponseFormat;
+    modelOptions?: Partial<ModelOptions>;
 }
 
 export interface PersonaSummary {
     id: string;
     name: string;
+    description?: string;
 }
 
-type MinMax = {
-    min: number;
-    max: number;
-};
+export interface PersonaResponseFormat {
+    type: 'text' | 'json';
+    schemaDescription?: string;
+}
+
+export interface ModelOptions {
+    temperature: number;
+    num_predict: number;
+    top_p: number;
+    repeat_penalty: number;
+}

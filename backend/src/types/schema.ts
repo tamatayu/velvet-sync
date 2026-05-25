@@ -14,10 +14,29 @@ export const MinMaxSchema = z
         },
     );
 
+export const PersonaResponseFormatSchema = z.object( {
+    type              : z.enum( [
+        'text',
+        'json'
+    ] ).default( 'text' ),
+    schemaDescription : z.string().optional(),
+} );
+
+export const ModelOptionsSchema = z.object( {
+    temperature    : z.number().min( 0 ).max( 2 ).optional(),
+    num_predict    : z.number().int().min( 1 ).optional(),
+    top_p          : z.number().min( 0 ).max( 1 ).optional(),
+    repeat_penalty : z.number().min( 0 ).optional(),
+} );
+
 export const PersonaSchema = z.object( {
-    id   : z.string().min( 1 ),
-    name : z.string().min( 1 ),
-} ).passthrough();
+    id             : z.string().min( 1 ),
+    name           : z.string().min( 1 ),
+    description    : z.string().optional(),
+    systemPrompt   : z.string().min( 1 ),
+    responseFormat : PersonaResponseFormatSchema.optional(),
+    modelOptions   : ModelOptionsSchema.optional(),
+} );
 
 export const PersonaSummarySchema = z.object( {
     id   : z.string().min( 1 ),

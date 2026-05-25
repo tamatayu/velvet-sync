@@ -74,13 +74,10 @@ export class ChatService {
             } );
 
         const aiResponseText = await this.llmService.generateResponse(
-            sessionId,
             content,
             activeProfile.personaConfig,
-            conversationHistory,
-            '',
-            undefined,
             activeProfile.userConfig.userName,
+            conversationHistory,
         );
 
         const assistantMessage: ChatMessage = {
