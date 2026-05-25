@@ -2,9 +2,7 @@ import { inject, injectable }                      from 'tsyringe';
 import { LLMService }                              from './LLMService';
 import { PersonaService }                          from './PersonaService';
 import { MemoryService }                           from './MemoryService';
-import { ModeManager }                             from './ModeManager';
-import { IntentClassifier }                        from './IntentClassifier';
-import { ChatMessage, ChatResponse, IChatService } from '../core/interfaces/IChatService';
+import { ChatMessage, ChatResponse, IChatService } from '../core/interfaces';
 
 interface SessionData {
     messages: ChatMessage[];
@@ -26,24 +24,14 @@ export class ChatService implements IChatService {
         private personaService: PersonaService,
         @inject( MemoryService )
         private memoryService: MemoryService,
-        @inject( ModeManager )
-        private modeManager: ModeManager,
-        @inject( IntentClassifier )
-        private intentClassifier: IntentClassifier
-    ) {
-    }
+    ) {}
 
     async sendUserMessage( sessionId: string, content: string ): Promise<ChatResponse> {
+
         // Get or create session
-        let session = this.sessions.get( sessionId );
-        if ( !session ) {
-            const defaultPersona = this.personaService.getDefaultPersona();
-            session              = {
-                messages     : [],
-                lastActivity : new Date(),
-                personaId    : defaultPersona.id
-            };
-            this.sessions.set( sessionId, session );
+        const session = this.sessions.get( sessionId );
+        if (!session) {
+            throw new Error( 'Session not found' );
         }
 
         // Add user message
@@ -55,8 +43,6 @@ export class ChatService implements IChatService {
         };
         session.messages.push( userMsg );
         session.lastActivity = new Date();
-
-        // === BESTE AKTUELLE LÖSUNG (Short + Structured + Long-term Memory) ===
 
         // 1. Short-term: Last 10 messages (full detail)
         const lastMessages = session.messages.slice( -10 ).map( m => ( {
@@ -88,7 +74,7 @@ export class ChatService implements IChatService {
         }
 
         // Generate AI response
-        const persona = this.personaService.getPersonaById( session.personaId ) || this.personaService.getDefaultPersona();
+        const persona = this.personaService.getPersonaById( session.personaId );
 
         // Load user settings
         const userSettings = session.userSettings || JSON.parse( localStorage.getItem( 'velvet-settings' ) || '{}' );
@@ -103,62 +89,13 @@ export class ChatService implements IChatService {
             userSettings.name
         );
 
-        // Add assistant message
-        let finalResponse = aiResponseText;
-
-        // If a mode just started, inform the AI
-        if ( session.pendingModeStart ) {
-            const modeName = session.pendingModeStart === 'stopgo' ? 'Stop & Go' :
-                session.pendingModeStart === 'edging' ? 'Edging' : 'Challenge';
-            finalResponse  = `Der ${ modeName } Modus ist jetzt aktiv. Ich übernehme die Kontrolle... 💕\n\n${ aiResponseText }`;
-            delete session.pendingModeStart;
-        }
-
         const assistantMsg: ChatMessage = {
             id        : ( Date.now() + 1 ).toString(),
             role      : 'assistant',
-            content   : finalResponse,
+            content   : aiResponseText,
             timestamp : new Date()
         };
         session.messages.push( assistantMsg );
-
-        // === Mode Manager Integration (using Intent Classifier) ===
-        const intentResult = await this.intentClassifier.classify( content );
-
-        if ( intentResult.confidence > 0.65 ) {
-            switch ( intentResult.intent ) {
-                case 'request_mode_edging':
-                    this.modeManager.proposeMode( 'edging' );
-                    break;
-                case 'request_mode_stopgo':
-                    this.modeManager.proposeMode( 'stopgo' );
-                    break;
-                case 'request_mode_challenge':
-                    this.modeManager.proposeMode( 'challenge' );
-                    break;
-                case 'confirm_ready':
-                    if ( this.modeManager.getCurrentStatus().state === 'AWAITING_CONFIRMATION' ) {
-                        this.modeManager.startMode();
-                    }
-                    break;
-            }
-        }
-
-        // Listen to mode status changes
-        this.modeManager.onStatusChange = ( status ) => {
-            console.log( '[ModeManager] Status changed:', status );
-
-            // When mode becomes ACTIVE, we can inform the AI in the next response
-            if ( status.state === 'ACTIVE' && status.activeMode ) {
-                // Store that we need to inform the AI
-                session.pendingModeStart = status.activeMode;
-            }
-        };
-
-        // Auto-summarize every 8 messages (Memory Phase 2)
-        if ( session.messages.length % 8 === 0 ) {
-            this.memoryService.summarizeSession( sessionId );
-        }
 
         return { message : assistantMsg };
     }
@@ -170,16 +107,5 @@ export class ChatService implements IChatService {
     clearSession( sessionId: string ): Promise<void> {
         this.sessions.delete( sessionId );
         return Promise.resolve();
-    }
-
-    // Helper for future Memory features
-    getSessionContext( sessionId: string, maxMessages: number = 12 ): Array<{ role: string; content: string }> {
-        const session = this.sessions.get( sessionId );
-        if ( !session ) return [];
-
-        return session.messages.slice( -maxMessages ).map( m => ( {
-            role    : m.role,
-            content : m.content
-        } ) );
     }
 }

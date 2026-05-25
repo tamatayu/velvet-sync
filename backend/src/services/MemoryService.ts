@@ -75,7 +75,7 @@ export class MemoryService {
    * Creates a summary of the current session using a small fast model
    */
   async summarizeSession(sessionId: string): Promise<SessionSummary | null> {
-    const messages = this.chatService.getHistory(sessionId);
+    const messages = await this.chatService.getHistory(sessionId);
     if (messages.length < 4) return null; // Too short to summarize
 
     const conversationText = messages
@@ -83,22 +83,21 @@ export class MemoryService {
       .join('\n\n');
 
     const prompt = `Zusammenfasse das folgende erotische Rollenspiel-Gespräch kurz und prägnant.
-
-Wichtige Punkte:
-- Welche Stimmung/Intensität hatte die Session?
-- Gab es besondere Wünsche oder Grenzen des Users?
-- Wie hat die AI reagiert (dominant, teasing, fürsorglich...)?
-- Offene Themen oder Versprechen
-
-Gib die Antwort als JSON:
-{
-  "summary": "Kurze 2-3 Sätze Zusammenfassung",
-  "keyEvents": ["Ereignis 1", "Ereignis 2"],
-  "userPreferences": ["Präferenz 1", "Präferenz 2"]
-}
-
-Gespräch:
-${conversationText}`;
+      Wichtige Punkte:
+      - Welche Stimmung/Intensität hatte die Session?
+      - Gab es besondere Wünsche oder Grenzen des Users?
+      - Wie hat die AI reagiert (dominant, teasing, fürsorglich...)?
+      - Offene Themen oder Versprechen
+      
+      Gib die Antwort als JSON:
+      {
+        "summary": "Kurze 2-3 Sätze Zusammenfassung",
+        "keyEvents": ["Ereignis 1", "Ereignis 2"],
+        "userPreferences": ["Präferenz 1", "Präferenz 2"]
+      }
+      
+      Gespräch:
+      ${conversationText}`;
 
     try {
       const response = await axios.post(`${this.ollamaHost}/api/generate`, {
