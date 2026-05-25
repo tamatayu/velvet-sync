@@ -1,5 +1,7 @@
 export interface ProfileSummary {
-
+    profileName: string;
+    persona: string;
+    userName: string;
 }
 
 export interface FullProfile {
