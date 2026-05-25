@@ -6,9 +6,9 @@ import { AppConfig, GlobalConfig, HandyConfig, UserConfig } from '../types/confi
 import { PersonaConfig, PersonaMemory, PersonaSummary }     from '../types/config.types';
 import { CreateProfile }                                    from '../types/config.types';
 import * as Schema                                          from '../types/schema';
-import { injectable }                                       from 'tsyringe';
+import { singleton }                                        from 'tsyringe';
 
-@injectable()
+@singleton()
 export class ConfigurationService {
     private readonly __dataDir__: string;
     private readonly __configPath__: string;

@@ -1,5 +1,5 @@
-import { inject, injectable } from 'tsyringe';
-
+import { inject }                                  from 'tsyringe';
+import { singleton }                               from 'tsyringe';
 import { ChatMessage, ChatResponse, IChatService } from '../core/interfaces';
 import { ConfigurationService }                    from './ConfigurationService';
 import { LLMService }                              from './LLMService';
@@ -17,7 +17,7 @@ interface SessionData {
     lastActivity: Date;
 }
 
-@injectable()
+@singleton()
 export class ChatService implements IChatService {
     private readonly sessions = new Map<string, SessionData>();
 
