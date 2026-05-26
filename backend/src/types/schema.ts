@@ -54,7 +54,7 @@ export const UserConfigSchema = z.object( {
 } );
 
 export const HandyConfigSchema = z.object( {
-    apiKey         : z.string(),
+    apiKey         : z.string().min( 1 ),
     depth          : MinMaxSchema,
     speed          : MinMaxSchema,
     speedOverwrite : z.number().min( 0 ).max( 100 ),

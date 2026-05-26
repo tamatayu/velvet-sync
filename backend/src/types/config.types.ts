@@ -44,7 +44,7 @@ export interface HandyConfig {
     speedOverwrite: number;
 }
 
-type MinMax = {
+export type MinMax = {
     min: number;
     max: number;
 };
