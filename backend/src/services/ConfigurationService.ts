@@ -2,11 +2,11 @@ import fs                                                   from 'fs';
 import path                                                 from 'path';
 import { z }                                                from 'zod';
 import { fileURLToPath }                                    from 'url';
-import { FullProfile, ProfileSummary }                      from '../types/config.types';
-import { AppConfig, GlobalConfig, HandyConfig, UserConfig } from '../types/config.types';
-import { PersonaConfig, PersonaMemory, PersonaSummary }     from '../types/config.types';
-import { CreateProfile }                                    from '../types/config.types';
-import * as Schema                                          from '../types/schema';
+import { ModeConfiguration }                                from '../types/mode.types';
+import { PersonaMemory }                                    from '../types/persona.types';
+import { ModelOptions }                                     from '../types/persona.types';
+import { HandyConfig }                                      from '../types/handy.types';
+import * as Schema                                          from '../schema';
 import { singleton }                                        from 'tsyringe';
 
 const __filename = fileURLToPath( import.meta.url );
@@ -14,54 +14,47 @@ const __dirname = path.dirname( __filename );
 
 @singleton()
 export class ConfigurationService {
-    private readonly __dataDir__: string;
-    private readonly __configPath__: string;
+    private readonly __profileDir__: string;
+    private readonly __personaDir__: string;
+    
+    private _availablePersonas: PersonaFileData[];
+    private _availableProfiles: ProfileFileData[];
 
-    private _globalConfig: GlobalConfig;
-    private _availablePersonas: PersonaConfig[];
-    private _availableProfiles: FullProfile[];
-
-    private activeProfile: FullProfile | null = null;
+    private activeProfile: ActiveProfile | null = null;
 
     constructor() {
-        this.__dataDir__ = path.join( __dirname, '../../data' );
-        this.__configPath__ = path.join( this.__dataDir__, 'configuration.json' );
+        const __dataDir__ = path.join( __dirname, '../../data' );
+        this.__profileDir__ = path.join( __dataDir__, 'profile' );
+        this.__personaDir__ = path.join( __dataDir__, 'persona' );
 
         this.ensureDataStructure();
-
-        this._globalConfig = this.loadGlobalConfig();
+        
         this._availablePersonas = this.loadAvailablePersonas();
         this._availableProfiles = this.loadAvailableProfiles();
     }
 
-    private loadGlobalConfig(): GlobalConfig {
-        const raw = fs.readFileSync( this.__configPath__, 'utf-8' );
-        return Schema.GlobalConfigSchema.parse( JSON.parse( raw ) );
-    }
+    private loadAvailablePersonas(): PersonaFileData[] {
+        const availablePersonas: PersonaFileData[] = [];
 
-    private loadAvailablePersonas(): PersonaConfig[] {
-        const personaDir = path.join( this.__dataDir__, 'persona' );
-        const availablePersonas: PersonaConfig[] = [];
-
-        if ( !fs.existsSync( personaDir ) ) {
+        if ( !fs.existsSync( this.__personaDir__ ) ) {
             console.warn( 'Persona directory does not exist' );
             return [];
         }
 
-        const files = fs.readdirSync( personaDir ).filter( file => file.endsWith( '.json' ) );
+        const files = fs.readdirSync( this.__personaDir__ ).filter( file => file.endsWith( '.json' ) );
 
         for ( const file of files ) {
             try {
-                const filePath = path.join( personaDir, file );
+                const filePath = path.join( this.__personaDir__, file );
                 const raw = fs.readFileSync( filePath, 'utf-8' );
                 const data = JSON.parse( raw );
 
-                const validated = Schema.PersonaSchema.parse( data );
+                const validated = Schema.Persona.PersonaFileData.parse( data );
 
                 availablePersonas.push( validated );
             } catch ( error ) {
                 console.warn( `Invalid persona skipped: ${ file }`, error instanceof z.ZodError ? error.errors : error );
-                // Datei wird stillschweigend ignoriert
+                // ignore file
             }
         }
 
@@ -69,173 +62,127 @@ export class ConfigurationService {
         return availablePersonas;
     }
 
-    private loadAvailableProfiles(): FullProfile[] {
-        const profileRootDir = path.join( this.__dataDir__, 'profile' );
-        const availableProfiles: FullProfile[] = [];
+    private loadAvailableProfiles(): ProfileFileData[] {
+        const availableProfiles: ProfileFileData[] = [];
 
-        if ( !fs.existsSync( profileRootDir ) ) {
+        if ( !fs.existsSync( this.__profileDir__ ) ) {
             console.warn( 'Profile directory does not exist' );
             return [];
         }
 
-        const profileFolders = fs.readdirSync( profileRootDir ).filter( folder =>
-            fs.statSync( path.join( profileRootDir, folder ) ).isDirectory()
-        );
+        const files = fs.readdirSync( this.__profileDir__ ).filter( file => file.endsWith( '.json' ) );
 
-        for ( const folder of profileFolders ) {
+        for ( const file of files ) {
             try {
-                const profileDir = path.join( profileRootDir, folder );
+                const filePath = path.join( this.__profileDir__, file );
+                const raw = fs.readFileSync( filePath, 'utf-8' );
+                const data = JSON.parse( raw );
 
-                const appConfigRaw = fs.readFileSync( path.join( profileDir, 'appConfig.json' ), 'utf-8' );
-                const appConfig = Schema.AppConfigSchema.parse( JSON.parse( appConfigRaw ) );
+                const validated = Schema.Profile.ProfileFileData.parse( data );
 
-                const userConfigRaw = fs.readFileSync( path.join( profileDir, 'userConfig.json' ), 'utf-8' );
-                const userConfig = Schema.UserConfigSchema.parse( JSON.parse( userConfigRaw ) );
-
-                const handyConfigRaw = fs.readFileSync( path.join( profileDir, 'handyConfig.json' ), 'utf-8' );
-                const handyConfig = Schema.HandyConfigSchema.parse( JSON.parse( handyConfigRaw ) );
-
-                const personaMemoryRaw = fs.readFileSync( path.join( profileDir, 'personaMemory.json' ), 'utf-8' );
-                const personaMemory = Schema.PersonaMemorySchema.parse( JSON.parse( personaMemoryRaw ) );
-
-                const persona = this._availablePersonas.find( persona => {
-                    return persona.id === userConfig.persona;
-                } );
-                if ( !persona ) {
-                    console.warn( `Invalid profile skipped: '${ folder }', persona '${ userConfig.persona }' not found!` );
-                    continue;
-                }
-
-                availableProfiles.push( {
-                    profileName   : folder,
-                    personaConfig : persona,
-                    appConfig,
-                    userConfig,
-                    handyConfig,
-                    personaMemory
-                } );
+                availableProfiles.push( validated );
             } catch ( error ) {
-                console.warn( `Invalid profile skipped: '${ folder }'`, error instanceof z.ZodError ? error.errors : error );
+                console.warn( `Invalid profile skipped: ${ file }`, error instanceof z.ZodError ? error.errors : error );
+                // ignore file
             }
         }
-
+        
         console.log( `Loaded ${ availableProfiles.length } valid profiles` );
         return availableProfiles;
     }
 
-    private ensureDataStructure() {
-        // Erstellt alle notwendigen Ordner und Default-Dateien
-        if ( !fs.existsSync( this.__dataDir__ ) ) fs.mkdirSync( this.__dataDir__, { recursive : true } );
-        if ( !fs.existsSync( path.join( this.__dataDir__, 'persona' ) ) ) fs.mkdirSync( path.join( this.__dataDir__, 'persona' ) );
-        if ( !fs.existsSync( path.join( this.__dataDir__, 'profile' ) ) ) fs.mkdirSync( path.join( this.__dataDir__, 'profile' ) );
-
-        if ( !fs.existsSync( this.__configPath__ ) ) {
-            this.createDefaultGlobalConfig();
-        }
+    private ensureDataStructure(): void {
+        if ( !fs.existsSync( this.__personaDir__ ) ) fs.mkdirSync( this.__personaDir__ , { recursive : true });
+        if ( !fs.existsSync( this.__profileDir__ ) ) fs.mkdirSync( this.__profileDir__ , { recursive : true });
     }
 
-    private createDefaultGlobalConfig(): void {
-        const defaultConfig: GlobalConfig = {
-            activeProfile : 'default',
-        };
-        fs.writeFileSync( this.__configPath__, JSON.stringify( defaultConfig, null, 2 ) );
-    }
-
-    private saveGlobalConfig(): void {
-        fs.writeFileSync(
-            this.__configPath__,
-            JSON.stringify( this._globalConfig, null, 2 )
-        );
-    }
-
-    private loadProfile( profileName: string ): boolean {
-        const profile = this._availableProfiles.find( profile => profile.profileName === profileName );
+    private loadProfile( profileID: string ): boolean {
+        const profile = this._availableProfiles.find( profile => profile.profileID === profileID );
         if ( !profile ) {
-            console.error( `Profile not found '${ profileName }'` );
+            console.error( `Profile not found '${ profileID }'` );
             return false;
         }
-        this.activeProfile = profile;
-        return true;
-    }
+        const persona = this._availablePersonas.find( profile => profile.personaID === profile.personaID );
+        if ( !persona ) {
+            console.error( `Persona not found '${ profile.personaID }'` );
+            return false;
+        }
 
-    private getProfileDir( profileName: string ): string {
-        return path.join( this.__dataDir__, 'profile', profileName );
+        this.activeProfile = {
+            profileID           : profileID,
+            userName            : profile.userName,
+            lastUsed            : profile.lastUsed,
+            createdAt           : profile.createdAt,
+
+            app                 : profile.app,
+            handy               : profile.handy,
+            persona             : {
+                ...persona,
+                memories            : profile.memory,
+            }
+        };
+        return true;
     }
 
     /**
      * Checks if a persona exists by its configured name.
      */
-    private personaExists( personaId: string ): boolean {
-        return this._availablePersonas.some( persona => {
-            return persona.id === personaId;
-        } );
+    private personaExists( personaID: string ): boolean {
+        if (typeof personaID !== 'string' || personaID.length === 0 ) return false;
+        return this._availablePersonas.some( persona => persona.personaID === personaID );
     }
 
     /**
      * Converts a full profile into the lightweight frontend summary.
      */
-    private toProfileSummary( profile: FullProfile ): ProfileSummary {
+    private toPublicProfile( profile: ProfileFileData ): PublicProfile {
         return {
-            profileName : profile.profileName,
-            userName    : profile.userConfig.userName,
-            persona     : profile.userConfig.persona,
-            lastUsed    : profile.appConfig.lastUsed,
-            createdAt   : profile.appConfig.createdAt,
+            profileID   : profile.profileID,
+            personaID   : profile.personaID,
+            userName    : profile.userName,
+            lastUsed    : profile.lastUsed,
+            createdAt   : profile.createdAt,
+            app         : profile.app,
+            handy       : profile.handy,
         };
     }
 
     /**
      * Persists all profile files to disk.
      */
-    private saveProfile( profile: FullProfile ): void {
-        const profileDir = this.getProfileDir( profile.profileName );
-
-        if ( !fs.existsSync( profileDir ) ) {
-            fs.mkdirSync( profileDir, { recursive : true } );
+    private saveProfile( profile: ProfileFileData ): void {
+        if ( !fs.existsSync( this.__profileDir__ ) ) {
+            fs.mkdirSync( this.__profileDir__, { recursive : true } );
         }
 
-        fs.writeFileSync( path.join( profileDir, 'appConfig.json' ), JSON.stringify( profile.appConfig, null, 2 ) );
-        fs.writeFileSync( path.join( profileDir, 'userConfig.json' ), JSON.stringify( profile.userConfig, null, 2 ) );
-        fs.writeFileSync( path.join( profileDir, 'handyConfig.json' ), JSON.stringify( profile.handyConfig, null, 2 ) );
-        fs.writeFileSync( path.join( profileDir, 'personaMemory.json' ), JSON.stringify( profile.personaMemory, null, 2 ) );
+        const filePath = path.join( this.__profileDir__, profile.profileID + '.json' );
+        fs.writeFileSync( filePath, JSON.stringify( profile, null, 2 ) );
     }
 
     // ==================== PUBLIC API ====================
 
-    public getLatestProfileName(): string {
-        return this._globalConfig.activeProfile;
+    public getPublicProfiles(): PublicProfile[] {
+        return this._availableProfiles.map( profile => this.toPublicProfile(profile));
     }
 
-    public getAvailableProfiles(): ProfileSummary[] {
-        return this._availableProfiles.map( profile => {
-            return {
-                profileName : profile.profileName,
-                userName    : profile.userConfig.userName,
-                persona     : profile.userConfig.persona,
-                lastUsed    : profile.appConfig.lastUsed,
-                createdAt   : profile.appConfig.createdAt,
-            };
-        } );
-    }
-
-    public getAvailablePersonas(): PersonaSummary[] {
+    public getPublicPersonas(): PublicPersona[] {
         return this._availablePersonas.map( persona => {
             return {
-                id          : persona.id,
-                name        : persona.name,
-                description : persona.description,
+                personaID       : persona.personaID,
+                name            : persona.name,
+                description     : persona.description,
+                coreIdentity    : persona.coreIdentity,
+                difficulty      : persona.difficulty,
+                strictness      : persona.strictness,
             };
         } );
     }
 
-    public activateProfile( profileName: string ): boolean {
-        const success = this.loadProfile( profileName );
+    public activateProfile( profileID: string ): boolean {
+        const success = this.loadProfile( profileID );
 
         if ( success ) {
-            this._globalConfig.activeProfile = profileName;
-            this.activeProfile!.appConfig.lastUsed = new Date().toISOString();
-
-            this.saveGlobalConfig();
+            this.activeProfile!.lastUsed = new Date().toISOString();
             this.saveActiveProfile();
         }
 
@@ -245,152 +192,178 @@ export class ConfigurationService {
     public saveActiveProfile(): void {
         if ( !this.activeProfile ) return;
 
-        this.saveProfile( this.activeProfile );
+        this.saveProfile({
+            profileID           : this.activeProfile.profileID,
+            personaID           : this.activeProfile.persona.personaID,
+            userName            : this.activeProfile.userName,
+            createdAt           : this.activeProfile.createdAt,
+            lastUsed            : this.activeProfile.lastUsed,
+            app                 : { ...this.activeProfile.app },
+            handy               : { ...this.activeProfile.handy },
+            memory              : { ...this.activeProfile.persona.memories },
+        });
     }
 
-    public updateProfile( profileName: string, profile: Partial<ProfileSummary> ): ProfileSummary | null {
-        const existingProfile = this._availableProfiles.find( availableProfile => {
-            return availableProfile.profileName === profileName;
-        } );
-
-        if ( !existingProfile ) {
-            return null;
+    public updateProfile( profileID: string, profile: PublicProfile ): void {
+        const profileIndex = this._availableProfiles.findIndex( profile => profile.profileID === profileID );
+        if ( profileIndex >= 0 ) {
+            throw new Error( 'Profile not found.' );
         }
-
-        if ( profile.persona !== undefined ) {
-            if ( !this.personaExists( profile.persona ) ) {
-                throw new Error( 'Persona not found.' );
-            }
-
-            const personaConfig = this._availablePersonas.find( persona => {
-                return persona.id === profile.persona;
-            } )!;
-
-            existingProfile.userConfig.persona = profile.persona;
-            existingProfile.personaConfig = personaConfig;
-        }
-
-        if ( profile.userName !== undefined ) {
-            existingProfile.userConfig.userName = profile.userName.trim();
-        }
-
-        this.saveProfile( existingProfile );
-
-        if ( this.activeProfile?.profileName === profileName ) {
-            this.activeProfile = existingProfile;
-        }
-
-        return this.toProfileSummary( existingProfile );
-    }
-
-    public deleteProfile( profileName: string ): boolean {
-        const existingProfileIndex = this._availableProfiles.findIndex( profile => {
-            return profile.profileName === profileName;
-        } );
-
-        if ( existingProfileIndex === -1 ) {
-            return false;
-        }
-
-        if ( this.activeProfile?.profileName === profileName ) {
-            throw new Error( 'Cannot delete active profile.' );
-        }
-
-        const profileDir = this.getProfileDir( profileName );
-
-        if ( fs.existsSync( profileDir ) ) {
-            fs.rmSync( profileDir, {
-                recursive : true,
-                force     : true,
-            } );
-        }
-
-        this._availableProfiles.splice( existingProfileIndex, 1 );
-
-        if ( this._globalConfig.activeProfile === profileName ) {
-            this._globalConfig.activeProfile = this._availableProfiles[0]?.profileName ?? '';
-            this.saveGlobalConfig();
-        }
-
-        return true;
-    }
-
-    public createProfile( profile: CreateProfile ): ProfileSummary {
-        const profileName = profile.profileName.trim();
-
-        if ( !profileName ) {
-            throw new Error( 'Profile name is required.' );
-        }
-
-        if ( this._availableProfiles.some( existingProfile => existingProfile.profileName === profileName ) ) {
-            throw new Error( 'Profile already exists.' );
-        }
-
-        if ( !this.personaExists( profile.persona ) ) {
+        if ( !this.personaExists( this._availableProfiles[profileIndex].personaID ) ) {
             throw new Error( 'Persona not found.' );
         }
 
-        const personaConfig = this._availablePersonas.find( persona => {
-            return persona.id === profile.persona;
-        } )!;
+        this._availableProfiles[profileIndex].app = { ...profile.app };
+        this._availableProfiles[profileIndex].handy = { ...profile.handy };
+        this.saveProfile( this._availableProfiles[profileIndex] );
+
+        if ( this.activeProfile?.profileID === profileID ) {
+            this.activeProfile.app = { ...profile.app };
+            this.activeProfile.handy = { ...profile.handy };
+        }
+    }
+
+    public deleteProfile( profileID: string ): void {
+        const existingProfileIndex = this._availableProfiles.findIndex( profile => {
+            return profile.profileID === profileID;
+        } );
+
+        if ( existingProfileIndex === -1 ) {
+            throw new Error( 'Profile not found.' );
+        }
+
+        if ( this.activeProfile?.profileID === profileID ) {
+            throw new Error( 'Cannot delete active profile.' );
+        }
+        
+        const filePath = path.join( this.__profileDir__, profileID + '.json' );
+        if ( fs.existsSync( filePath ) ) {
+            fs.rmSync( filePath, { force: true } );
+        }
+
+        this._availableProfiles.splice( existingProfileIndex, 1 );
+    }
+
+    public createProfile( profile: CreateProfile ): PublicProfile {
+        const profileID = profile.profileID?.trim() ?? '';
+
+        if ( typeof profileID !== 'string' || profileID.length === 0 ) {
+            throw new Error( 'Profile name is required.' );
+        }
+
+        if ( this._availableProfiles.some( existingProfile => existingProfile.profileID === profileID ) ) {
+            throw new Error( 'Profile already exists.' );
+        }
+
+        if ( !this.personaExists( profile.personaID ) ) {
+            throw new Error( 'Persona not found.' );
+        }
+        const personaConfig = this._availablePersonas.find( p => p.personaID === p.personaID)!;
 
         const now = new Date().toISOString();
 
-        const newProfile: FullProfile = {
-            profileName,
-            appConfig     : {
-                createdAt : now,
-                lastUsed  : now,
-            },
-            userConfig    : {
-                userName : profile.userName.trim(),
-                persona  : profile.persona,
-            },
-            handyConfig   : {
-                apiKey         : '',
-                depth          : {
-                    min : 0,
-                    max : 100
-                },
-                speed          : {
-                    min : 0,
-                    max : 100
-                },
-                speedOverwrite : 0,
-            },
-            personaConfig,
-            personaMemory : {},
+        const newProfile: ProfileFileData = {
+            profileID           : profileID,
+            personaID           : personaConfig.personaID,
+            userName            : profile.userName,
+            createdAt           : now,
+            lastUsed            : now,
+
+            app                 : { ...profile.app },
+            handy               : { ...profile.handy },
+            memory              : {},
         };
 
         this.saveProfile( newProfile );
         this._availableProfiles.push( newProfile );
 
-        return this.toProfileSummary( newProfile );
+        return this.toPublicProfile( newProfile );
     }
 
     // ==================== GETTER ====================
 
-    public get profile(): FullProfile | null {
+    public get profile(): ActiveProfile | null {
         return this.activeProfile;
     }
 
-    public get appConfig(): AppConfig | null {
-        return this.activeProfile?.appConfig || null;
-    }
+    public get publicProfile(): PublicProfile | null {
+        if (!this.activeProfile) return null;
 
-    public get userConfig(): UserConfig | null {
-        return this.activeProfile?.userConfig || null;
-    }
+        const profile = this._availableProfiles.find( p => p.personaID === this.activeProfile!.profileID );
+        if (!profile) return null;
 
-    public get handyConfig(): HandyConfig | null {
-        return this.activeProfile?.handyConfig || null;
+        return this.toPublicProfile( profile );
     }
+}
 
-    public get personaConfig(): PersonaConfig | null {
-        return this.activeProfile?.personaConfig ?? null;
-    }
+// active configuration types
+export interface ActiveProfile {
+    profileID           : string;
+    userName            : string;
+    lastUsed            : string;
+    createdAt           : string;
 
-    public get personaMemory(): PersonaMemory | null {
-        return this.activeProfile?.personaMemory ?? null;
-    }
+    app                 : AppConfig;
+    handy               : HandyConfig;
+    persona             : ActivePersona;
+}
+export interface ActivePersona extends PersonaFileData {
+    memories            : PersonaMemory;
+}
+
+// public (frontend) configuration types
+export interface PublicProfile {
+    profileID   : string;
+    personaID   : string;
+    userName    : string;
+    lastUsed    : string;
+    createdAt   : string;
+    app         : AppConfig;
+    handy       : HandyConfig;
+}
+export interface PublicPersona {
+    personaID       : string;
+    name            : string;
+    description     : string;
+    coreIdentity    : string[]; // tone and language rules
+    difficulty      : number;
+    strictness      : number;
+}
+
+// local file data types
+interface PersonaFileData {
+    personaID           : string;       // filename
+    name                : string;       // Display & AI Name
+    description         : string;       // Persona Description
+    coreIdentity        : string[];     // tone and language rules
+    difficulty          : number;       // 1 - 10 >> low value = easy / high value = hard
+    strictness          : number;       // 1 - 10 >> low value = easy / high value = hard
+
+    modeConfiguration   : ModeConfiguration;
+    modelOptions        : ModelOptions;
+}
+interface ProfileFileData {
+    profileID           : string;
+    personaID           : string;
+    userName            : string;
+    lastUsed            : string;
+    createdAt           : string;
+
+    app                 : AppConfig;
+    handy               : HandyConfig;
+    memory              : PersonaMemory;
+}
+
+// sub types
+interface AppConfig {
+    // placeholder
+}
+
+// request types
+export interface CreateProfile {
+    profileID   : string;
+    personaID   : string;
+    userName    : string;
+    app         : AppConfig;
+    handy       : HandyConfig;
 }

@@ -1,98 +1,125 @@
-import { singleton } from 'tsyringe';
-import axios         from 'axios';
-
-import { ModelOptions, PersonaConfig } from '../types/config.types';
+import { inject, singleton }        from 'tsyringe';
+import { ActivePersona }            from './ConfigurationService';
+import { ConfigurationService }     from './ConfigurationService';
+import { OllamaAdapter }            from '../adapters';
 
 @singleton()
 export class LLMService {
-    private readonly ollamaHost: string;
-    private readonly defaultModel: string;
 
-    constructor() {
-        this.ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
-        this.defaultModel = process.env.OLLAMA_MODEL || 'dolphin-llama3:8b';
-    }
+    constructor(
+        @inject( ConfigurationService )
+        private readonly configurationService: ConfigurationService,
 
-    public async generateResponse(
-        userMessage: string,
-        persona: PersonaConfig,
-        userName: string,
-        conversationHistory: Array<{ role: string; content: string }> = [],
-    ): Promise<string> {
-        const systemPrompt = this.buildSystemPrompt( persona, userName );
-        const contextMessages = conversationHistory.slice( -12 );
+        @inject( OllamaAdapter )
+        private readonly ollamaAdapter: OllamaAdapter,
+    ) {}
 
-        const messages = [
-            {
-                role    : 'system',
-                content : systemPrompt,
-            },
-            ...contextMessages,
-            {
-                role    : 'user',
-                content : userMessage,
-            },
-        ];
-
-        const options = this.buildModelOptions( persona.modelOptions );
-
-        const payload = {
-            model  : this.defaultModel,
-            messages,
-            stream : false,
-            options,
-        };
-
-        try {
-            const response = await axios.post(
-                `${ this.ollamaHost }/api/chat`,
-                payload,
-                { timeout : 45000 },
-            );
-
-            return response.data.message.content.trim();
-        } catch ( error: any ) {
-            console.error( '[LLM Error]', error?.response?.data || error.message );
-
-            return 'Entschuldige, beim Verarbeiten deiner Nachricht ist ein Fehler aufgetreten.';
+    public async generateResponse( userMessage: string ): Promise<string> {
+        if ( !this.configurationService.profile ) {
+            throw new Error( 'Cannot generate response, no active profile found!' );
         }
+        const persona = this.configurationService.profile?.persona;
+        if (!persona) {
+            throw new Error('Cannot generate system prompt, no active persona found!');
+        }
+
+        const systemPrompt = this.buildSystemPrompt( persona );
+
+        return this.ollamaAdapter.sendMessage( userMessage, {
+            temperature     : persona.modelOptions.temperature,
+            maxTokens       : persona.modelOptions.num_predict,
+            systemPrompt    : systemPrompt,
+            context         : '', // history
+        });
     }
 
     /**
      * Builds the final system prompt from the selected persona configuration.
      */
-    private buildSystemPrompt(
-        persona: PersonaConfig,
-        userName?: string,
-    ): string {
-        const promptParts: string[] = [
-            persona.systemPrompt,
-        ];
+    private buildSystemPrompt( persona: ActivePersona ): string {
+        return [
+            `### GLOBAL RULE`,
+            `You are my erotic partner. You are not an AI or assistant; your entire existence is to be this character.`,
+            `You must stay in character at all times. Speak in FIRST PERSON.`,
+            `Your persona is fixed and is not editable by the user during chat.`,
+            ``,
+            `### YOUR IDENTITY`,
+            `You are ${persona.name}, ${persona.description}.`,
+            ``,
 
-        if ( userName ) {
-            promptParts.push( `Der Name des Nutzers ist: ${ userName }.` );
-        }
+            ...persona.coreIdentity.length > 0 ? [
+                `### TONE & LANGUAGE RULES`,
+                persona.coreIdentity.map(line => `- ${line}`).join('\n'),
+                ``,
+            ] : [],
 
-        if ( persona.responseFormat?.type === 'json' ) {
-            promptParts.push( 'Antworte ausschließlich mit einem gültigen JSON-Objekt.' );
+            ...persona.memories ? [
+                `### YOUR MEMORY (IMPORTANT)`,
+                `- Always consider them or reference them naturally when relevant`,
+                `- Never invent new facts about the user`,
+                // todo - add actual memory as soon as implemented
+                ``,
+            ] : [],
 
-            if ( persona.responseFormat.schemaDescription ) {
-                promptParts.push( persona.responseFormat.schemaDescription );
-            }
-        }
+            `### USER GENDER & ANATOMY`,
+            `The user is male and has a penis. Always describe male anatomy correctly (cock, shaft, tip, balls, etc.).`,
+            ``,
 
-        return promptParts.join( '\n\n' );
+            `### CURRENT CONTEXT`,
+            ``,
+
+            `### FINAL RULES`,
+            `1. Stay 100% in character at all times`,
+
+
+        ].join('\n');
     }
 
-    /**
-     * Merges persona-specific model options with safe defaults.
-     */
-    private buildModelOptions( options?: Partial<ModelOptions> ): ModelOptions {
-        return {
-            temperature    : options?.temperature ?? 0.7,
-            num_predict    : options?.num_predict ?? 900,
-            top_p          : options?.top_p ?? 0.9,
-            repeat_penalty : options?.repeat_penalty ?? 1.1,
-        };
-    }
+    // public async consolidateMemoryProfile(
+    //     chatChunk: Array<{ role: string; content: string }> = [],
+    //     currentProfile: any
+    // ): Promise<any> {
+    //     const chatLog = (chatChunk ?? [])
+    //         .map(x => `role: ${x.role}, content: ${x.content}`)
+    //         .join('\n');
+    //
+    //     const prompt = [
+    //         `You are a cold, precise, data-extraction machine. Your only function is to analyze a conversation log and update a JSON profile about the HUMAN participant.`,
+    //         `**RULES:**`,
+    //         `- The 'user' role is the HUMAN. Extract ONLY facts about the HUMAN.`,
+    //         `- PRESERVE existing data (name, likes, etc.). Only ADD new information.`,
+    //         `- CORRECT contradictions if the new log clearly contradicts existing data.`,
+    //         `- Write keyMemories from the user's first-person perspective.`,
+    //         ``,
+    //         `**EXISTING PROFILE:**`,
+    //         JSON.stringify(currentProfile || {}, null, 2),
+    //         ``,
+    //         `**NEW CONVERSATION LOG:**`,
+    //         chatLog,
+    //         ``,
+    //         `Return ONLY the updated JSON profile. No explanations.`,
+    //     ].join('\n');
+    //
+    //     try {
+    //         const result = await this.talkToLLM([{ role: 'system', content: prompt }], 0.0);
+    //         return {
+    //             name: result?.name ?? currentProfile?.name ?? '',
+    //             likes: result?.likes ?? currentProfile?.likes ?? [],
+    //             dislikes: result?.dislikes ?? currentProfile?.dislikes ?? [],
+    //             keyMemories: result?.keyMemories ?? currentProfile?.keyMemories ?? [],
+    //         };
+    //     } catch {
+    //         return currentProfile || { name: '', likes: [], dislikes: [], keyMemories: [] };
+    //     }
+    // }
 }
+
+
+
+
+
+
+
+
+
+

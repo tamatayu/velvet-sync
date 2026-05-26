@@ -11,7 +11,7 @@ const configurationService = container.resolve( ConfigurationService );
  */
 router.get( '/', ( req, res ) => {
     res.json( {
-        personas : configurationService.getAvailablePersonas(),
+        personas : configurationService.getPublicPersonas(),
     } );
 } );
 
@@ -20,9 +20,9 @@ router.get( '/', ( req, res ) => {
  */
 router.get( '/:id', ( req, res ) => {
     const persona = configurationService
-        .getAvailablePersonas()
+        .getPublicPersonas()
         .find( availablePersona => {
-            return availablePersona.id === req.params.id;
+            return availablePersona.personaID === req.params.id;
         } );
 
     if ( !persona ) {

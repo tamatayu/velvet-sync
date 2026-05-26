@@ -64,21 +64,16 @@ export class ChatService {
         session.messages.push( userMessage );
         session.lastActivity = new Date();
 
-        const conversationHistory = session.messages
-            .slice( -10 )
-            .map( message => {
-                return {
-                    role    : message.role === 'user' ? 'user' : 'assistant',
-                    content : message.content,
-                };
-            } );
+        // const conversationHistory = session.messages
+        //     .slice( -10 )
+        //     .map( message => {
+        //         return {
+        //             role    : message.role === 'user' ? 'user' : 'assistant',
+        //             content : message.content,
+        //         };
+        //     } );
 
-        const aiResponseText = await this.llmService.generateResponse(
-            content,
-            activeProfile.personaConfig,
-            activeProfile.userConfig.userName,
-            conversationHistory,
-        );
+        const aiResponseText = await this.llmService.generateResponse( content );
 
         const assistantMessage: ChatMessage = {
             id        : this.createMessageId(),
